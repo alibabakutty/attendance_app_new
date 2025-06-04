@@ -93,7 +93,7 @@ class Auth {
         'email': email,
         'employee_id': employeeId,
         'mobile_number': mobileNumber,
-        'isAdmin': true, // Mark as admin
+        'isAdmin': false, // Mark as admin
         'createdAt': FieldValue.serverTimestamp(),
         'lastLogin': FieldValue.serverTimestamp(),
       });

@@ -1,6 +1,6 @@
 import 'package:attendance_app/authentication/auth_provider.dart';
+import 'package:attendance_app/screen/admin_manage_dashboard.dart';
 import 'package:attendance_app/screen/attendance_history.dart';
-import 'package:attendance_app/screen/delete_account_page.dart';
 import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +63,10 @@ class _HomePageState extends State<HomePage> {
     required String title,
     required Gradient gradient,
     required VoidCallback onTap,
+    bool adminOnly = false,
   }) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
@@ -80,14 +83,46 @@ class _HomePageState extends State<HomePage> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            if (adminOnly && !authProvider.isAdmin) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Admin access required'),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            } else {
+              onTap();
+            }
+          },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 36, color: Colors.white),
+                Stack(
+                  children: [
+                    Icon(icon, size: 36, color: Colors.white),
+                    if (adminOnly && !authProvider.isAdmin)
+                      Positioned(
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lock,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Text(
                   title,
@@ -99,6 +134,14 @@ class _HomePageState extends State<HomePage> {
                     letterSpacing: 0.5,
                   ),
                 ),
+                if (adminOnly && !authProvider.isAdmin)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'Admin Only',
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -117,9 +160,9 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: backgroundColor,
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.cyanAccent),
-        title: const Text(
-          'Employee Dashboard',
-          style: TextStyle(
+        title: Text(
+          authProvider.isAdmin ? 'Admin Dashboard' : 'Employee Dashboard',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.cyanAccent,
@@ -148,9 +191,11 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Let’s do something amazing today!',
-                style: TextStyle(color: textSecondary, fontSize: 14),
+              Text(
+                authProvider.isAdmin
+                    ? 'Administrator privileges enabled'
+                    : 'Let\'s do something amazing today!',
+                style: const TextStyle(color: textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 30),
               Expanded(
@@ -198,7 +243,8 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
-                      onTap: () => _navigateTo(const DeleteAccountPage()),
+                      onTap: () => _navigateTo(const AdminManageDashboard()),
+                      adminOnly: true,
                     ),
                   ],
                 ),

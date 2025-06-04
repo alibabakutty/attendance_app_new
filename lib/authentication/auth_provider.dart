@@ -239,8 +239,23 @@ class AuthProvider extends ChangeNotifier {
 
       // Determine user role - you might want to fetch this from your database
       // For now using the existing flags
-      _isAdmin = _isAdmin; // Preserve existing value
-      _isEmployee = !_isAdmin;
+      // _isAdmin = _isAdmin; // Preserve existing value
+      // _isEmployee = !_isAdmin;
+
+      // Fetch user role from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        _isAdmin = userData['isAdmin'] ?? false;
+        _isEmployee = !_isAdmin; // Assuming if not admin, then employee
+      } else {
+        _isAdmin = false;
+        _isEmployee = true;
+      }
 
       await _saveSession();
     } catch (e) {
