@@ -1,5 +1,6 @@
 import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/modals/mark_attendance_data.dart';
+import 'package:attendance_app/service/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,13 +9,15 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class MarkAttendance extends StatefulWidget {
-  const MarkAttendance({super.key});
+  const MarkAttendance({super.key, this.mobileNumber});
+  final String? mobileNumber;
 
   @override
   State<MarkAttendance> createState() => _MarkAttendanceState();
 }
 
 class _MarkAttendanceState extends State<MarkAttendance> {
+  final FirebaseService _firebaseService = FirebaseService();
   final Map<String, Position?> _locationMap = {
     'officeIn': null,
     'lunchStart': null,
@@ -30,79 +33,90 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   String _locationError = '';
   bool _isLoading = true;
   bool _isFetching = false;
+  bool _isEditing = false;
+  MarkAttendanceData? _attendanceData;
 
   @override
   void initState() {
     super.initState();
-    _fetchTodayAttendance();
+    _initializeData();
   }
 
-  // Helper methods for time validation
-  bool _isWithinOfficeTimeInRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 9, 30);
-    final endTime = DateTime(now.year, now.month, now.day, 10, 15);
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
+  Future<void> _initializeData() async {
+    try {
+      await _fetchTodayAttendance();
+      if (widget.mobileNumber != null) {
+        await _fetchEmployeeAttendanceData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Initialization error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
-  bool _isWithinLunchTimeRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 13, 15); // 1:15 PM
-    final endTime = DateTime(now.year, now.month, now.day, 14, 30); // 2:30 PM
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
-  }
+  Future<void> _fetchEmployeeAttendanceData() async {
+    if (widget.mobileNumber == null) return;
 
-  bool _isWithinOfficeTimeOutRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 18, 30); // 6:30 PM
-    final endTime = DateTime(now.year, now.month, now.day, 19, 15); // 7:15 PM
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
-  }
+    setState(() => _isFetching = true);
+    try {
+      final attendanceData = await _firebaseService
+          .fetchMarkAttendanceDataByMobileNumber(widget.mobileNumber!);
 
-  String _getTimeWarning(DateTime time, String actionType) {
-    switch (actionType) {
-      case 'officeIn':
-        if (_isWithinOfficeTimeInRange(time)) return '';
-        final startTime = DateTime(time.year, time.month, time.day, 9, 30);
-        return time.isBefore(startTime)
-            ? '⚠️ Too early (allowed after 9:30 AM)'
-            : '⚠️ Too late (allowed before 10:15 AM)';
+      if (attendanceData != null && mounted) {
+        setState(() {
+          _attendanceData = attendanceData;
+          _officeTimeIn = attendanceData.officeTimeIn?.toDate();
+          _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
+          _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
+          _officeTimeOut = attendanceData.officeTimeOut?.toDate();
+          _isSubmitted = _officeTimeOut != null;
+          _isEditing = true;
 
-      case 'lunchStart':
-      case 'lunchEnd':
-        if (_isWithinLunchTimeRange(time)) return '';
-        final startTime = DateTime(time.year, time.month, time.day, 13, 15);
-        return time.isBefore(startTime)
-            ? '⚠️ Too early (allowed after 1:15 PM)'
-            : '⚠️ Too late (allowed before 2:30 PM)';
-
-      case 'officeOut':
-        if (_isWithinOfficeTimeOutRange(time)) return '';
-        final startTime = DateTime(time.year, time.month, time.day, 18, 30);
-        return time.isBefore(startTime)
-            ? '⚠️ Too early (allowed after 6:30 PM)'
-            : '⚠️ Too late (allowed before 7:15 PM)';
-
-      default:
-        return '';
+          _updateLocationFromData(
+            'officeIn',
+            attendanceData.officeTimeInLocation,
+          );
+          _updateLocationFromData(
+            'lunchStart',
+            attendanceData.lunchTimeStartLocation,
+          );
+          _updateLocationFromData(
+            'lunchEnd',
+            attendanceData.lunchTimeEndLocation,
+          );
+          _updateLocationFromData(
+            'officeOut',
+            attendanceData.officeTimeOutLocation,
+          );
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fetch error: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isFetching = false);
+      }
     }
   }
 
   Future<void> _fetchTodayAttendance() async {
     if (_isFetching) return;
-
-    setState(() {
-      _isFetching = true;
-      _isLoading = true;
-    });
+    setState(() => _isFetching = true);
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final today = DateTime.now();
-      // final startOfDay = DateTime(today.year, today.month, today.day);
       final docId =
           '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(today)}';
 
@@ -140,16 +154,13 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching attendance: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fetch error: ${e.toString()}')));
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isFetching = false;
-        });
+        setState(() => _isFetching = false);
       }
     }
   }
@@ -171,21 +182,55 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     }
   }
 
+  Future<void> _showTimeUpdateDialog(String actionType) async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (time != null && mounted) {
+      final now = DateTime.now();
+      final updatedTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        time.hour,
+        time.minute,
+      );
+
+      setState(() {
+        switch (actionType) {
+          case 'officeIn':
+            _officeTimeIn = updatedTime;
+            break;
+          case 'lunchStart':
+            _lunchTimeStart = updatedTime;
+            break;
+          case 'lunchEnd':
+            _lunchTimeEnd = updatedTime;
+            break;
+          case 'officeOut':
+            _officeTimeOut = updatedTime;
+            _isSubmitted = true;
+            break;
+        }
+      });
+
+      await _saveAttendanceToFirestore();
+    }
+  }
+
   Future<Position?> _getCurrentLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         await Geolocator.openLocationSettings();
-        setState(() {
-          _locationError = 'Location services are disabled.';
-        });
+        setState(() => _locationError = 'Location services are disabled.');
         return null;
       }
 
       PermissionStatus status = await Permission.location.status;
-      if (status.isDenied ||
-          status.isRestricted ||
-          status.isPermanentlyDenied) {
+      if (status.isDenied || status.isPermanentlyDenied) {
         final newStatus = await Permission.location.request();
         if (newStatus.isPermanentlyDenied) {
           setState(() {
@@ -196,9 +241,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           return null;
         }
         if (!newStatus.isGranted) {
-          setState(() {
-            _locationError = 'Location permission denied.';
-          });
+          setState(() => _locationError = 'Location permission denied.');
           return null;
         }
       }
@@ -206,24 +249,12 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-
-      setState(() {
-        _locationError = '';
-      });
-
+      setState(() => _locationError = '');
       return position;
     } catch (e) {
-      setState(() {
-        _locationError = 'Error getting location: $e';
-      });
+      setState(() => _locationError = 'Error getting location: $e');
       return null;
     }
-  }
-
-  String _formatLocation(Position? pos) {
-    return pos != null
-        ? 'Lat: ${pos.latitude.toStringAsFixed(4)}, Lng: ${pos.longitude.toStringAsFixed(4)}'
-        : 'Location not available';
   }
 
   Future<void> _handleAction(String actionType) async {
@@ -231,24 +262,8 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     if (position == null) return;
 
     final now = DateTime.now();
-
-    // Check for time restrictions
-    bool isWithinTimeRange = true;
-    switch (actionType) {
-      case 'officeIn':
-        isWithinTimeRange = _isWithinOfficeTimeInRange(now);
-        break;
-      case 'lunchStart':
-      case 'lunchEnd':
-        isWithinTimeRange = _isWithinLunchTimeRange(now);
-        break;
-      case 'officeOut':
-        isWithinTimeRange = _isWithinOfficeTimeOutRange(now);
-        break;
-    }
-
-    if (!isWithinTimeRange) {
-      final warning = _getTimeWarning(now, actionType);
+    final warning = _getTimeWarning(now, actionType);
+    if (warning.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(warning),
@@ -256,12 +271,10 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           duration: const Duration(seconds: 5),
         ),
       );
-      // Still allow marking but with warning
     }
 
     setState(() {
       _locationMap[actionType] = position;
-
       switch (actionType) {
         case 'officeIn':
           _officeTimeIn = now;
@@ -279,24 +292,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$actionType recorded at ${DateFormat('hh:mm a').format(now)}',
-            ),
-            Text(
-              _formatLocation(position),
-              style: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-
     await _saveAttendanceToFirestore();
   }
 
@@ -304,99 +299,151 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final now = DateTime.now();
-      final docId =
-          '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(now)}';
+      final status = _calculateStatus();
 
-      // Determine status based on actions
-      String status = 'absent';
-      if (_officeTimeIn != null) {
-        if (_officeTimeOut != null) {
-          // check if lunch time was taken (both start and end)
-          if (_lunchTimeStart != null && _lunchTimeEnd != null) {
-            status = 'present';
-          } else {
-            // office time in and out marked but not lunch taken (or incomplete lunch)
-            status = 'half-day';
-          }
-        } else {
-          // only office time in marked
-          status = 'half-day';
-        }
-      }
-
-      final markAttendanceData = MarkAttendanceData(
-        employeeId: authProvider.employeeId!,
-        employeeName: authProvider.username!,
-        mobileNumber: authProvider.mobileNumber!,
-        attendanceDate: Timestamp.fromDate(now),
-        officeTimeIn: _officeTimeIn != null
+      final markAttendanceData = {
+        'employeeId': authProvider.employeeId!,
+        'employeeName': authProvider.username!,
+        'mobileNumber': authProvider.mobileNumber!,
+        'attendanceDate': Timestamp.fromDate(now),
+        'officeTimeIn': _officeTimeIn != null
             ? Timestamp.fromDate(_officeTimeIn!)
             : null,
-        officeTimeInLocation: _locationMap['officeIn'] != null
+        'officeTimeInLocation': _locationMap['officeIn'] != null
             ? GeoPoint(
                 _locationMap['officeIn']!.latitude,
                 _locationMap['officeIn']!.longitude,
               )
             : null,
-        lunchTimeStart: _lunchTimeStart != null
+        'lunchTimeStart': _lunchTimeStart != null
             ? Timestamp.fromDate(_lunchTimeStart!)
             : null,
-        lunchTimeStartLocation: _locationMap['lunchStart'] != null
+        'lunchTimeStartLocation': _locationMap['lunchStart'] != null
             ? GeoPoint(
                 _locationMap['lunchStart']!.latitude,
                 _locationMap['lunchStart']!.longitude,
               )
             : null,
-        lunchTimeEnd: _lunchTimeEnd != null
+        'lunchTimeEnd': _lunchTimeEnd != null
             ? Timestamp.fromDate(_lunchTimeEnd!)
             : null,
-        lunchTimeEndLocation: _locationMap['lunchEnd'] != null
+        'lunchTimeEndLocation': _locationMap['lunchEnd'] != null
             ? GeoPoint(
                 _locationMap['lunchEnd']!.latitude,
                 _locationMap['lunchEnd']!.longitude,
               )
             : null,
-        officeTimeOut: _officeTimeOut != null
+        'officeTimeOut': _officeTimeOut != null
             ? Timestamp.fromDate(_officeTimeOut!)
             : null,
-        officeTimeOutLocation: _locationMap['officeOut'] != null
+        'officeTimeOutLocation': _locationMap['officeOut'] != null
             ? GeoPoint(
                 _locationMap['officeOut']!.latitude,
                 _locationMap['officeOut']!.longitude,
               )
             : null,
-        status: status,
-      );
+        'status': status,
+      };
 
-      await FirebaseFirestore.instance
-          .collection('mark_attendance_data')
-          .doc(docId)
-          .set(markAttendanceData.toFirestore(), SetOptions(merge: true));
-    } catch (e) {
+      if (widget.mobileNumber != null && _isEditing) {
+        await _updateAttendanceData(markAttendanceData);
+      } else {
+        final docId =
+            '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(now)}';
+        await FirebaseFirestore.instance
+            .collection('mark_attendance_data')
+            .doc(docId)
+            .set(markAttendanceData, SetOptions(merge: true));
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving attendance: ${e.toString()}')),
+          const SnackBar(content: Text('Attendance saved successfully')),
         );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save error: ${e.toString()}')));
       }
     }
   }
 
-  bool _shouldEnableButton(String actionType) {
+  Future<bool> _updateAttendanceData(Map<String, dynamic> updatedData) async {
+    if (widget.mobileNumber == null) return false;
+
+    try {
+      await _firebaseService.updateMarkAttendanceDataByMobileNumber(
+        widget.mobileNumber!,
+        updatedData,
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update failed: ${e.toString()}')),
+        );
+      }
+      return false;
+    }
+  }
+
+  String _calculateStatus() {
+    if (_officeTimeIn == null) return 'absent';
+    if (_officeTimeOut == null) return 'half-day';
+    return (_lunchTimeStart != null && _lunchTimeEnd != null)
+        ? 'present'
+        : 'half-day';
+  }
+
+  bool _isWithinOfficeTimeInRange(DateTime time) {
+    final now = time;
+    final startTime = DateTime(now.year, now.month, now.day, 9, 30);
+    final endTime = DateTime(now.year, now.month, now.day, 10, 15);
+    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        now.isBefore(endTime.add(const Duration(seconds: 1)));
+  }
+
+  bool _isWithinLunchTimeRange(DateTime time) {
+    final now = time;
+    final startTime = DateTime(now.year, now.month, now.day, 13, 15);
+    final endTime = DateTime(now.year, now.month, now.day, 14, 30);
+    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        now.isBefore(endTime.add(const Duration(seconds: 1)));
+  }
+
+  bool _isWithinOfficeTimeOutRange(DateTime time) {
+    final now = time;
+    final startTime = DateTime(now.year, now.month, now.day, 18, 30);
+    final endTime = DateTime(now.year, now.month, now.day, 19, 15);
+    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        now.isBefore(endTime.add(const Duration(seconds: 1)));
+  }
+
+  String _getTimeWarning(DateTime time, String actionType) {
     switch (actionType) {
       case 'officeIn':
-        return _officeTimeIn == null;
+        if (_isWithinOfficeTimeInRange(time)) return '';
+        final startTime = DateTime(time.year, time.month, time.day, 9, 30);
+        return time.isBefore(startTime)
+            ? '⚠️ Too early (allowed after 9:30 AM)'
+            : '⚠️ Too late (allowed before 10:15 AM)';
       case 'lunchStart':
-        return _officeTimeIn != null &&
-            _lunchTimeStart == null &&
-            _officeTimeOut == null;
       case 'lunchEnd':
-        return _lunchTimeStart != null &&
-            _lunchTimeEnd == null &&
-            _officeTimeOut == null;
+        if (_isWithinLunchTimeRange(time)) return '';
+        final startTime = DateTime(time.year, time.month, time.day, 13, 15);
+        return time.isBefore(startTime)
+            ? '⚠️ Too early (allowed after 1:15 PM)'
+            : '⚠️ Too late (allowed before 2:30 PM)';
       case 'officeOut':
-        return _officeTimeIn != null && _officeTimeOut == null;
+        if (_isWithinOfficeTimeOutRange(time)) return '';
+        final startTime = DateTime(time.year, time.month, time.day, 18, 30);
+        return time.isBefore(startTime)
+            ? '⚠️ Too early (allowed after 6:30 PM)'
+            : '⚠️ Too late (allowed before 7:15 PM)';
       default:
-        return false;
+        return '';
     }
   }
 
@@ -413,13 +460,13 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   Color _getStatusColorWithOpacity(String status) {
     switch (status.toLowerCase()) {
       case 'present':
-        return Color.fromRGBO(0, 255, 0, 0.2); // Green with opacity
+        return const Color.fromRGBO(0, 255, 0, 0.2);
       case 'completed':
-        return Color.fromRGBO(0, 0, 255, 0.2); // Blue with opacity
+        return const Color.fromRGBO(0, 0, 255, 0.2);
       case 'absent':
-        return Color.fromRGBO(255, 0, 0, 0.2); // Red with opacity
+        return const Color.fromRGBO(255, 0, 0, 0.2);
       default:
-        return Color.fromRGBO(128, 128, 128, 0.2); // Grey with opacity
+        return const Color.fromRGBO(128, 128, 128, 0.2);
     }
   }
 
@@ -427,9 +474,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Mark Attendance',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          widget.mobileNumber != null ? 'Update Attendance' : 'Mark Attendance',
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue[800],
         centerTitle: true,
@@ -485,6 +532,35 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     location: _locationMap['officeOut'],
                     actionType: 'officeOut',
                   ),
+                  if (widget.mobileNumber != null) ...[
+                    const Divider(),
+                    const Text(
+                      'Admin Controls',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _showTimeUpdateDialog('officeIn'),
+                          child: const Text('Update Office In'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _showTimeUpdateDialog('lunchStart'),
+                          child: const Text('Update Lunch Start'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _showTimeUpdateDialog('lunchEnd'),
+                          child: const Text('Update Lunch End'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _showTimeUpdateDialog('officeOut'),
+                          child: const Text('Update Office Out'),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (_isSubmitted)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
@@ -633,7 +709,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            _formatLocation(location),
+                            'Lat: ${location.latitude.toStringAsFixed(4)}, Lng: ${location.longitude.toStringAsFixed(4)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -643,29 +719,30 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _shouldEnableButton(actionType)
-                      ? () => actionType == 'officeOut'
-                            ? _confirmOfficeOut()
-                            : _handleAction(actionType)
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _shouldEnableButton(actionType)
-                        ? Colors.blue[800]
-                        : Colors.grey,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                if (widget.mobileNumber == null)
+                  ElevatedButton(
+                    onPressed: _shouldEnableButton(actionType)
+                        ? () => actionType == 'officeOut'
+                              ? _confirmOfficeOut()
+                              : _handleAction(actionType)
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _shouldEnableButton(actionType)
+                          ? Colors.blue[800]
+                          : Colors.grey,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                    child: const Text(
+                      'Mark',
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  child: const Text(
-                    'Mark',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
               ],
             ),
           ],
@@ -698,6 +775,26 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
     if (confirmed == true) {
       await _handleAction('officeOut');
+    }
+  }
+
+  bool _shouldEnableButton(String actionType) {
+    if (_isSubmitted) return false;
+    switch (actionType) {
+      case 'officeIn':
+        return _officeTimeIn == null;
+      case 'lunchStart':
+        return _officeTimeIn != null &&
+            _lunchTimeStart == null &&
+            _officeTimeOut == null;
+      case 'lunchEnd':
+        return _lunchTimeStart != null &&
+            _lunchTimeEnd == null &&
+            _officeTimeOut == null;
+      case 'officeOut':
+        return _officeTimeIn != null && _officeTimeOut == null;
+      default:
+        return false;
     }
   }
 }

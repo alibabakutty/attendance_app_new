@@ -48,6 +48,13 @@ class AttendanceApp extends StatelessWidget {
           '/attendanceHistory': (context) => const AttendanceHistory(),
           '/adminManageDashboard': (context) => const AdminManageDashboard(),
           '/deleteAccount': (context) => const DeleteAccountPage(),
+          '/updateMarkAttendance': (context) {
+            // Get the arguments from ModalRoute
+            final args =
+                ModalRoute.of(context)?.settings.arguments
+                    as Map<String, dynamic>;
+            return MarkAttendance(mobileNumber: args['mobile_number']);
+          },
         },
       ),
     );
