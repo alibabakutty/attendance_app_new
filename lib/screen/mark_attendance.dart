@@ -46,7 +46,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     try {
       await _fetchTodayAttendance();
       if (widget.mobileNumber != null) {
-        await _fetchEmployeeAttendanceData();
+        // await _fetchEmployeeAttendanceData();
       }
     } catch (e) {
       if (mounted) {

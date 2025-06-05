@@ -112,17 +112,35 @@ class FirebaseService {
 
   // fetch mark attendance by mobile number
   Future<MarkAttendanceData?> fetchMarkAttendanceDataByMobileNumber(
-    String mobileNumber,
-  ) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('mark_attendance_data')
-        .where('mobile_number', isEqualTo: mobileNumber)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      return MarkAttendanceData.fromFirestore(snapshot.docs.first.data());
+    String mobileNumber, {
+    DateTime? date,
+  }) async {
+    try {
+      Query query = _db
+          .collection('mark_attendance_data')
+          .where('mobile_number', isEqualTo: mobileNumber);
+
+      if (date != null) {
+        // Add date filtering if a date is provided
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        final endOfDay = startOfDay.add(const Duration(days: 1));
+
+        query = query
+            .where('attendance_date', isGreaterThanOrEqualTo: startOfDay)
+            .where('attendance_date', isLessThan: endOfDay);
+      }
+
+      final snapshot = await query.limit(1).get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data() as Map<String, dynamic>;
+        return MarkAttendanceData.fromFirestore(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching mark attendance data by mobile number: $e');
+      return null;
     }
-    return null;
   }
 
   // fetch all employee master data
