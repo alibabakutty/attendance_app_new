@@ -111,34 +111,36 @@ class FirebaseService {
   }
 
   // fetch mark attendance by mobile number
-  Future<MarkAttendanceData?> fetchMarkAttendanceDataByMobileNumber(
-    String mobileNumber, {
-    DateTime? date,
-  }) async {
+  Future<MarkAttendanceData?> fetchAttendanceByMobileNumberWithSpecificDate(
+    String mobileNumber,
+    DateTime attendanceDate,
+  ) async {
     try {
-      Query query = _db
+      final startOfDay = DateTime(
+        attendanceDate.year,
+        attendanceDate.month,
+        attendanceDate.day,
+      );
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final querySnapshot = await _db
           .collection('mark_attendance_data')
-          .where('mobile_number', isEqualTo: mobileNumber);
+          .where('mobile_number', isEqualTo: mobileNumber)
+          .where('attendance_date', isGreaterThanOrEqualTo: startOfDay)
+          .where('attendance_date', isLessThan: endOfDay)
+          .limit(1)
+          .get();
 
-      if (date != null) {
-        // Add date filtering if a date is provided
-        final startOfDay = DateTime(date.year, date.month, date.day);
-        final endOfDay = startOfDay.add(const Duration(days: 1));
-
-        query = query
-            .where('attendance_date', isGreaterThanOrEqualTo: startOfDay)
-            .where('attendance_date', isLessThan: endOfDay);
-      }
-
-      final snapshot = await query.limit(1).get();
-
-      if (snapshot.docs.isNotEmpty) {
-        final data = snapshot.docs.first.data() as Map<String, dynamic>;
-        return MarkAttendanceData.fromFirestore(data);
+      if (querySnapshot.docs.isNotEmpty) {
+        return MarkAttendanceData.fromFirestore(
+          querySnapshot.docs.first.data(),
+        );
       }
       return null;
     } catch (e) {
-      print('Error fetching mark attendance data by mobile number: $e');
+      print(
+        'Error fetching attendance by mobile number with specific date: $e',
+      );
       return null;
     }
   }

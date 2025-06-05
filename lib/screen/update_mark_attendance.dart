@@ -8,15 +8,21 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
-class MarkAttendance extends StatefulWidget {
-  const MarkAttendance({super.key, this.mobileNumber});
-  final String? mobileNumber;
+class UpdateMarkAttendance extends StatefulWidget {
+  const UpdateMarkAttendance({
+    super.key,
+    this.mobileNumberArgs,
+    this.existingAttendance,
+  });
+
+  final String? mobileNumberArgs;
+  final MarkAttendanceData? existingAttendance;
 
   @override
-  State<MarkAttendance> createState() => _MarkAttendanceState();
+  State<UpdateMarkAttendance> createState() => _UpdateMarkAttendanceState();
 }
 
-class _MarkAttendanceState extends State<MarkAttendance> {
+class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   final FirebaseService _firebaseService = FirebaseService();
   final Map<String, Position?> _locationMap = {
     'officeIn': null,
@@ -34,8 +40,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   bool _isLoading = true;
   bool _isFetching = false;
   bool _isEditing = false;
-  MarkAttendanceData? _attendanceData;
-  String? mobileNumberArgs;
 
   @override
   void initState() {
@@ -46,7 +50,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   Future<void> _initializeData() async {
     try {
       await _fetchTodayAttendance();
-      if (widget.mobileNumber != null) {
+      if (widget.mobileNumberArgs != null) {
         // await _fetchEmployeeAttendanceData();
       }
     } catch (e) {
@@ -68,11 +72,11 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   //   setState(() => _isFetching = true);
   //   try {
   //     final attendanceData = await _firebaseService
-  //         .fetchMarkAttendanceDataByMobileNumber(widget.mobileNumber!);
+  //         .fetchUpdateMarkAttendanceDataByMobileNumber(widget.mobileNumber!);
 
   //     if (attendanceData != null && mounted) {
   //       setState(() {
-  //         _attendanceData = attendanceData;
+  //         existingAttendance = attendanceData;
   //         _officeTimeIn = attendanceData.officeTimeIn?.toDate();
   //         _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
   //         _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
@@ -302,7 +306,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       final now = DateTime.now();
       final status = _calculateStatus();
 
-      final markAttendanceData = {
+      final UpdateMarkAttendanceData = {
         'employeeId': authProvider.employeeId!,
         'employeeName': authProvider.username!,
         'mobileNumber': authProvider.mobileNumber!,
@@ -346,15 +350,15 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         'status': status,
       };
 
-      if (widget.mobileNumber != null && _isEditing) {
-        await _updateAttendanceData(markAttendanceData);
+      if (widget.mobileNumberArgs != null && _isEditing) {
+        await _updateAttendanceData(UpdateMarkAttendanceData);
       } else {
         final docId =
             '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(now)}';
         await FirebaseFirestore.instance
             .collection('mark_attendance_data')
             .doc(docId)
-            .set(markAttendanceData, SetOptions(merge: true));
+            .set(UpdateMarkAttendanceData, SetOptions(merge: true));
       }
 
       if (mounted) {
@@ -372,11 +376,11 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   }
 
   Future<bool> _updateAttendanceData(Map<String, dynamic> updatedData) async {
-    if (widget.mobileNumber == null) return false;
+    if (widget.mobileNumberArgs == null) return false;
 
     try {
       await _firebaseService.updateMarkAttendanceDataByMobileNumber(
-        widget.mobileNumber!,
+        widget.mobileNumberArgs!,
         updatedData,
       );
       return true;
@@ -476,7 +480,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.mobileNumber != null ? 'Update Attendance' : 'Mark Attendance',
+          widget.mobileNumberArgs != null
+              ? 'Update Attendance'
+              : 'Mark Attendance',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue[800],
@@ -533,7 +539,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     location: _locationMap['officeOut'],
                     actionType: 'officeOut',
                   ),
-                  if (widget.mobileNumber != null) ...[
+                  if (widget.mobileNumberArgs != null) ...[
                     const Divider(),
                     const Text(
                       'Admin Controls',
@@ -720,7 +726,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     ],
                   ),
                 ),
-                if (widget.mobileNumber == null)
+                if (widget.mobileNumberArgs == null)
                   ElevatedButton(
                     onPressed: _shouldEnableButton(actionType)
                         ? () => actionType == 'officeOut'
