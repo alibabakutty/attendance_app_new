@@ -481,13 +481,29 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Selected Date: ${DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate)}',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
-                              ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Selected Date:',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[800],
+                                  ),
+                            ),
+                            Text(
+                              DateFormat(
+                                'EEEE, MMMM d, yyyy',
+                              ).format(_selectedDate),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[800],
+                                  ),
+                            ),
+                          ],
                         ),
                         if (_isFetching)
                           const Padding(
