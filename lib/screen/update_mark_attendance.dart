@@ -426,15 +426,15 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'present':
-        return Colors.green;
-      case 'completed':
-        return Colors.blue;
-      case 'absent':
-        return Colors.red;
+    switch (status) {
+      case 'approved':
+        return const Color.fromARGB(51, 76, 175, 80); // Green with 20% opacity
+      case 'pending':
+        return const Color.fromARGB(51, 255, 193, 7); // Amber with 20% opacity
+      case 'rejected':
+        return const Color.fromARGB(51, 244, 67, 54); // Red with 20% opacity
       default:
-        return Colors.grey;
+        return const Color.fromARGB(51, 158, 158, 158); // Grey with 20% opacity
     }
   }
 
@@ -707,7 +707,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: _getStatusColor(status).withOpacity(0.2),
+                                color: _getStatusColor(status).withAlpha(51),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

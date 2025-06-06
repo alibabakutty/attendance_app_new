@@ -284,7 +284,7 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.cyanAccent.withOpacity(0.2),
+                      color: Color.fromARGB(51, 0, 255, 255),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
