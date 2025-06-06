@@ -1,4 +1,3 @@
-import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/modals/mark_attendance_data.dart';
 import 'package:attendance_app/service/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,17 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 
 class UpdateMarkAttendance extends StatefulWidget {
   const UpdateMarkAttendance({
     super.key,
     this.mobileNumberArgs,
     this.existingAttendance,
+    this.employeeName,
+    this.employeeId,
   });
 
   final String? mobileNumberArgs;
   final MarkAttendanceData? existingAttendance;
+  final String? employeeName;
+  final String? employeeId;
 
   @override
   State<UpdateMarkAttendance> createState() => _UpdateMarkAttendanceState();
@@ -50,14 +52,9 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   Future<void> _initializeData() async {
     try {
       await _fetchTodayAttendance();
-      if (widget.mobileNumberArgs != null) {
-        // await _fetchEmployeeAttendanceData();
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Initialization error: ${e.toString()}')),
-        );
+        _showErrorSnackBar('Initialization error: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -66,108 +63,58 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     }
   }
 
-  // Future<void> _fetchEmployeeAttendanceData() async {
-  //   if (widget.mobileNumber == null) return;
-
-  //   setState(() => _isFetching = true);
-  //   try {
-  //     final attendanceData = await _firebaseService
-  //         .fetchUpdateMarkAttendanceDataByMobileNumber(widget.mobileNumber!);
-
-  //     if (attendanceData != null && mounted) {
-  //       setState(() {
-  //         existingAttendance = attendanceData;
-  //         _officeTimeIn = attendanceData.officeTimeIn?.toDate();
-  //         _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
-  //         _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
-  //         _officeTimeOut = attendanceData.officeTimeOut?.toDate();
-  //         _isSubmitted = _officeTimeOut != null;
-  //         _isEditing = true;
-
-  //         _updateLocationFromData(
-  //           'officeIn',
-  //           attendanceData.officeTimeInLocation,
-  //         );
-  //         _updateLocationFromData(
-  //           'lunchStart',
-  //           attendanceData.lunchTimeStartLocation,
-  //         );
-  //         _updateLocationFromData(
-  //           'lunchEnd',
-  //           attendanceData.lunchTimeEndLocation,
-  //         );
-  //         _updateLocationFromData(
-  //           'officeOut',
-  //           attendanceData.officeTimeOutLocation,
-  //         );
-  //       });
-  //     }
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(
-  //         context,
-  //       ).showSnackBar(SnackBar(content: Text('Fetch error: ${e.toString()}')));
-  //     }
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() => _isFetching = false);
-  //     }
-  //   }
-  // }
-
   Future<void> _fetchTodayAttendance() async {
-    if (_isFetching) return;
+    if (_isFetching || widget.mobileNumberArgs == null) return;
     setState(() => _isFetching = true);
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final today = DateTime.now();
-      final docId =
-          '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(today)}';
+      // First check if we have existing attendance data passed in
+      if (widget.existingAttendance != null) {
+        _populateDataFromExisting(widget.existingAttendance!);
+        return;
+      }
 
-      final doc = await FirebaseFirestore.instance
-          .collection('mark_attendance_data')
-          .doc(docId)
-          .get();
+      // Otherwise fetch from Firebase
+      final attendanceData = await _firebaseService
+          .fetchAttendanceByMobileNumberWithSpecificDate(
+            widget.mobileNumberArgs!,
+            DateTime.now(),
+          );
 
-      if (doc.exists && mounted) {
-        final attendanceData = MarkAttendanceData.fromFirestore(doc.data()!);
-        setState(() {
-          _officeTimeIn = attendanceData.officeTimeIn?.toDate();
-          _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
-          _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
-          _officeTimeOut = attendanceData.officeTimeOut?.toDate();
-          _isSubmitted = _officeTimeOut != null;
-
-          _updateLocationFromData(
-            'officeIn',
-            attendanceData.officeTimeInLocation,
-          );
-          _updateLocationFromData(
-            'lunchStart',
-            attendanceData.lunchTimeStartLocation,
-          );
-          _updateLocationFromData(
-            'lunchEnd',
-            attendanceData.lunchTimeEndLocation,
-          );
-          _updateLocationFromData(
-            'officeOut',
-            attendanceData.officeTimeOutLocation,
-          );
-        });
+      if (attendanceData != null && mounted) {
+        _populateDataFromExisting(attendanceData);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Fetch error: ${e.toString()}')));
+        _showErrorSnackBar('Fetch error: ${e.toString()}');
       }
     } finally {
       if (mounted) {
         setState(() => _isFetching = false);
       }
     }
+  }
+
+  void _populateDataFromExisting(MarkAttendanceData attendanceData) {
+    setState(() {
+      _officeTimeIn = attendanceData.officeTimeIn?.toDate();
+      _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
+      _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
+      _officeTimeOut = attendanceData.officeTimeOut?.toDate();
+      _isSubmitted = _officeTimeOut != null;
+      _isEditing = true;
+
+      _updateLocationFromData('officeIn', attendanceData.officeTimeInLocation);
+      _updateLocationFromData(
+        'lunchStart',
+        attendanceData.lunchTimeStartLocation,
+      );
+      _updateLocationFromData('lunchEnd', attendanceData.lunchTimeEndLocation);
+      _updateLocationFromData(
+        'officeOut',
+        attendanceData.officeTimeOutLocation,
+      );
+    });
   }
 
   void _updateLocationFromData(String key, GeoPoint? location) {
@@ -269,13 +216,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     final now = DateTime.now();
     final warning = _getTimeWarning(now, actionType);
     if (warning.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(warning),
-          backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      _showWarningSnackBar(warning);
     }
 
     setState(() {
@@ -302,95 +243,73 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
 
   Future<void> _saveAttendanceToFirestore() async {
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final now = DateTime.now();
       final status = _calculateStatus();
 
-      final UpdateMarkAttendanceData = {
-        'employeeId': authProvider.employeeId!,
-        'employeeName': authProvider.username!,
-        'mobileNumber': authProvider.mobileNumber!,
-        'attendanceDate': Timestamp.fromDate(now),
-        'officeTimeIn': _officeTimeIn != null
+      final attendanceData = MarkAttendanceData(
+        employeeId: widget.employeeId ?? '',
+        employeeName: widget.employeeName ?? '',
+        mobileNumber: widget.mobileNumberArgs ?? '',
+        attendanceDate: Timestamp.fromDate(now),
+        officeTimeIn: _officeTimeIn != null
             ? Timestamp.fromDate(_officeTimeIn!)
             : null,
-        'officeTimeInLocation': _locationMap['officeIn'] != null
+        officeTimeInLocation: _locationMap['officeIn'] != null
             ? GeoPoint(
                 _locationMap['officeIn']!.latitude,
                 _locationMap['officeIn']!.longitude,
               )
             : null,
-        'lunchTimeStart': _lunchTimeStart != null
+        lunchTimeStart: _lunchTimeStart != null
             ? Timestamp.fromDate(_lunchTimeStart!)
             : null,
-        'lunchTimeStartLocation': _locationMap['lunchStart'] != null
+        lunchTimeStartLocation: _locationMap['lunchStart'] != null
             ? GeoPoint(
                 _locationMap['lunchStart']!.latitude,
                 _locationMap['lunchStart']!.longitude,
               )
             : null,
-        'lunchTimeEnd': _lunchTimeEnd != null
+        lunchTimeEnd: _lunchTimeEnd != null
             ? Timestamp.fromDate(_lunchTimeEnd!)
             : null,
-        'lunchTimeEndLocation': _locationMap['lunchEnd'] != null
+        lunchTimeEndLocation: _locationMap['lunchEnd'] != null
             ? GeoPoint(
                 _locationMap['lunchEnd']!.latitude,
                 _locationMap['lunchEnd']!.longitude,
               )
             : null,
-        'officeTimeOut': _officeTimeOut != null
+        officeTimeOut: _officeTimeOut != null
             ? Timestamp.fromDate(_officeTimeOut!)
             : null,
-        'officeTimeOutLocation': _locationMap['officeOut'] != null
+
+        officeTimeOutLocation: _locationMap['officeOut'] != null
             ? GeoPoint(
                 _locationMap['officeOut']!.latitude,
                 _locationMap['officeOut']!.longitude,
               )
             : null,
-        'status': status,
-      };
-
-      if (widget.mobileNumberArgs != null && _isEditing) {
-        await _updateAttendanceData(UpdateMarkAttendanceData);
-      } else {
-        final docId =
-            '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(now)}';
-        await FirebaseFirestore.instance
-            .collection('mark_attendance_data')
-            .doc(docId)
-            .set(UpdateMarkAttendanceData, SetOptions(merge: true));
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Attendance saved successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Save error: ${e.toString()}')));
-      }
-    }
-  }
-
-  Future<bool> _updateAttendanceData(Map<String, dynamic> updatedData) async {
-    if (widget.mobileNumberArgs == null) return false;
-
-    try {
-      await _firebaseService.updateMarkAttendanceDataByMobileNumber(
-        widget.mobileNumberArgs!,
-        updatedData,
+        status: status,
       );
-      return true;
+
+      if (_isEditing) {
+        // Update existing record
+        await _firebaseService.updateMarkAttendanceDataByMobileNumber(
+          widget.mobileNumberArgs!,
+          attendanceData.toFirestore(),
+        );
+      } else {
+        // Create new record
+        await _firebaseService.addNewMarkAttendanceData(attendanceData);
+        setState(() => _isEditing = true);
+      }
+
+      if (mounted) {
+        _showSuccessSnackBar('Attendance saved successfully');
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: ${e.toString()}')),
-        );
+        _showErrorSnackBar('Save error: ${e.toString()}');
       }
-      return false;
     }
   }
 
@@ -403,27 +322,24 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   }
 
   bool _isWithinOfficeTimeInRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 9, 30);
-    final endTime = DateTime(now.year, now.month, now.day, 10, 15);
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
+    final startTime = DateTime(time.year, time.month, time.day, 9, 30);
+    final endTime = DateTime(time.year, time.month, time.day, 10, 15);
+    return time.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        time.isBefore(endTime.add(const Duration(seconds: 1)));
   }
 
   bool _isWithinLunchTimeRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 13, 15);
-    final endTime = DateTime(now.year, now.month, now.day, 14, 30);
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
+    final startTime = DateTime(time.year, time.month, time.day, 13, 15);
+    final endTime = DateTime(time.year, time.month, time.day, 14, 30);
+    return time.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        time.isBefore(endTime.add(const Duration(seconds: 1)));
   }
 
   bool _isWithinOfficeTimeOutRange(DateTime time) {
-    final now = time;
-    final startTime = DateTime(now.year, now.month, now.day, 18, 30);
-    final endTime = DateTime(now.year, now.month, now.day, 19, 15);
-    return now.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        now.isBefore(endTime.add(const Duration(seconds: 1)));
+    final startTime = DateTime(time.year, time.month, time.day, 18, 30);
+    final endTime = DateTime(time.year, time.month, time.day, 19, 15);
+    return time.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
+        time.isBefore(endTime.add(const Duration(seconds: 1)));
   }
 
   String _getTimeWarning(DateTime time, String actionType) {
@@ -462,17 +378,39 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     return '';
   }
 
-  Color _getStatusColorWithOpacity(String status) {
+  Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'present':
-        return const Color.fromRGBO(0, 255, 0, 0.2);
+        return Colors.green;
       case 'completed':
-        return const Color.fromRGBO(0, 0, 255, 0.2);
+        return Colors.blue;
       case 'absent':
-        return const Color.fromRGBO(255, 0, 0, 0.2);
+        return Colors.red;
       default:
-        return const Color.fromRGBO(128, 128, 128, 0.2);
+        return Colors.grey;
     }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -480,9 +418,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.mobileNumberArgs != null
-              ? 'Update Attendance'
-              : 'Mark Attendance',
+          'Update Attendance for ${widget.employeeName ?? widget.mobileNumberArgs}',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue[800],
@@ -539,35 +475,33 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                     location: _locationMap['officeOut'],
                     actionType: 'officeOut',
                   ),
-                  if (widget.mobileNumberArgs != null) ...[
-                    const Divider(),
-                    const Text(
-                      'Admin Controls',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _showTimeUpdateDialog('officeIn'),
-                          child: const Text('Update Office In'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _showTimeUpdateDialog('lunchStart'),
-                          child: const Text('Update Lunch Start'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _showTimeUpdateDialog('lunchEnd'),
-                          child: const Text('Update Lunch End'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _showTimeUpdateDialog('officeOut'),
-                          child: const Text('Update Office Out'),
-                        ),
-                      ],
-                    ),
-                  ],
+                  const Divider(),
+                  const Text(
+                    'Admin Controls',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _showTimeUpdateDialog('officeIn'),
+                        child: const Text('Update Office In'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _showTimeUpdateDialog('lunchStart'),
+                        child: const Text('Update Lunch Start'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _showTimeUpdateDialog('lunchEnd'),
+                        child: const Text('Update Lunch End'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _showTimeUpdateDialog('officeOut'),
+                        child: const Text('Update Office Out'),
+                      ),
+                    ],
+                  ),
                   if (_isSubmitted)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
@@ -664,13 +598,13 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: _getStatusColorWithOpacity(status),
+                                color: _getStatusColor(status).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 status,
                                 style: TextStyle(
-                                  color: _getStatusColorWithOpacity(status),
+                                  color: _getStatusColor(status),
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -726,7 +660,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                     ],
                   ),
                 ),
-                if (widget.mobileNumberArgs == null)
+                if (widget.mobileNumberArgs != null)
                   ElevatedButton(
                     onPressed: _shouldEnableButton(actionType)
                         ? () => actionType == 'officeOut'
