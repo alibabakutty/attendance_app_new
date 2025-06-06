@@ -365,28 +365,48 @@ class FirebaseService {
   }
 
   // update mark attendance data by mobile number
-  Future<bool> updateMarkAttendanceDataByMobileNumber(
+  Future<bool> updateMarkAttendanceDataByMobileNumberWithSpecificDate(
     String mobileNumber,
+    DateTime attendanceDate,
     Map<String, dynamic> updatedData,
   ) async {
     try {
-      QuerySnapshot snapshot = await _db
+      // Calculate start and end of the day for the given date
+      final startOfDay = DateTime(
+        attendanceDate.year,
+        attendanceDate.month,
+        attendanceDate.day,
+      );
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      // Query for attendance records matching both mobile number and date
+      final querySnapshot = await _db
           .collection('mark_attendance_data')
           .where('mobile_number', isEqualTo: mobileNumber)
+          .where('attendance_date', isGreaterThanOrEqualTo: startOfDay)
+          .where('attendance_date', isLessThan: endOfDay)
           .limit(1)
           .get();
-      if (snapshot.docs.isEmpty) {
-        print('No attendance record found for mobile number: $mobileNumber');
+
+      if (querySnapshot.docs.isEmpty) {
+        print(
+          'No attendance record found for mobile number: $mobileNumber on date: $attendanceDate',
+        );
         return false; // No document found
       }
-      final docId = snapshot.docs.first.id;
+
+      // Update the found document
+      final docId = querySnapshot.docs.first.id;
       await _db
           .collection('mark_attendance_data')
           .doc(docId)
           .update(updatedData);
+
       return true;
     } catch (e, stackTrace) {
-      print('Update failed for mobile $mobileNumber: $e');
+      print(
+        'Update failed for mobile $mobileNumber on date $attendanceDate: $e',
+      );
       print('Stack trace: $stackTrace');
       return false;
     }

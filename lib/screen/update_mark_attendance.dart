@@ -11,14 +11,14 @@ class UpdateMarkAttendance extends StatefulWidget {
     super.key,
     this.mobileNumberArgs,
     this.existingAttendance,
-    this.employeeName,
-    this.employeeId,
+    required this.employeeName,
+    required this.employeeId,
   });
 
   final String? mobileNumberArgs;
   final MarkAttendanceData? existingAttendance;
-  final String? employeeName;
-  final String? employeeId;
+  final String employeeName;
+  final String employeeId;
 
   @override
   State<UpdateMarkAttendance> createState() => _UpdateMarkAttendanceState();
@@ -41,7 +41,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   String _locationError = '';
   bool _isLoading = true;
   bool _isFetching = false;
-  bool _isEditing = false;
+  // bool _isEditing = false;
   DateTime _selectedDate = DateTime.now();
 
   @override
@@ -81,7 +81,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         return;
       }
 
-      // Otherwise fetch from Firebase
+      // Fetch from Firebase using the specific date
       final attendanceData = await _firebaseService
           .fetchAttendanceByMobileNumberWithSpecificDate(
             widget.mobileNumberArgs!,
@@ -91,14 +91,13 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       if (attendanceData != null && mounted) {
         _populateDataFromExisting(attendanceData);
       } else {
-        // No existing data for selected date - reset fields
+        // No existing data for selected date - reset fields but keep the date
         setState(() {
           _officeTimeIn = null;
           _lunchTimeStart = null;
           _lunchTimeEnd = null;
           _officeTimeOut = null;
           _isSubmitted = false;
-          _isEditing = false;
           _locationMap.forEach((key, value) => _locationMap[key] = null);
         });
       }
@@ -136,7 +135,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
       _officeTimeOut = attendanceData.officeTimeOut?.toDate();
       _isSubmitted = _officeTimeOut != null;
-      _isEditing = true;
 
       _updateLocationFromData('officeIn', attendanceData.officeTimeInLocation);
       _updateLocationFromData(
@@ -294,8 +292,8 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       final status = _calculateStatus();
 
       final attendanceData = MarkAttendanceData(
-        employeeId: widget.employeeId ?? '',
-        employeeName: widget.employeeName ?? '',
+        employeeId: widget.employeeId,
+        employeeName: widget.employeeName,
         mobileNumber: widget.mobileNumberArgs ?? '',
         attendanceDate: Timestamp.fromDate(_selectedDate),
         officeTimeIn: _officeTimeIn != null
@@ -337,20 +335,23 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         status: status,
       );
 
-      if (_isEditing) {
-        // Update existing record
-        await _firebaseService.updateMarkAttendanceDataByMobileNumber(
-          widget.mobileNumberArgs!,
-          attendanceData.toFirestore(),
-        );
-      } else {
-        // Create new record
-        await _firebaseService.addNewMarkAttendanceData(attendanceData);
-        setState(() => _isEditing = true);
-      }
+      // Use the new function that includes date filtering
+      final success = await _firebaseService
+          .updateMarkAttendanceDataByMobileNumberWithSpecificDate(
+            widget.mobileNumberArgs!,
+            _selectedDate,
+            attendanceData.toFirestore(),
+          );
 
-      if (mounted) {
-        _showSuccessSnackBar('Attendance saved successfully');
+      if (success) {
+        if (mounted) {
+          _showSuccessSnackBar('Attendance saved successfully');
+          // setState(() => _isEditing = true);
+        }
+      } else {
+        if (mounted) {
+          _showErrorSnackBar('Failed to save attendance');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -457,6 +458,28 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+
+  Future<void> _createNewAttendance() async {
+    try {
+      final attendanceData = MarkAttendanceData(
+        employeeId: widget.employeeId,
+        employeeName: widget.employeeName,
+        mobileNumber: widget.mobileNumberArgs ?? '',
+        attendanceDate: Timestamp.fromDate(_selectedDate),
+        status: 'absent', // Default status
+      );
+
+      await _firebaseService.addNewMarkAttendanceData(attendanceData);
+      if (mounted) {
+        _showSuccessSnackBar('New attendance record created');
+        await _fetchAttendanceForSelectedDate(); // Refresh the data
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error creating attendance: ${e.toString()}');
+      }
+    }
   }
 
   @override
@@ -580,6 +603,12 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                         onPressed: () => _showTimeUpdateDialog('officeOut'),
                         child: const Text('Update Office Out'),
                       ),
+                      // Add a new button to create new attendance if none exists
+                      if (_officeTimeIn == null)
+                        ElevatedButton(
+                          onPressed: _createNewAttendance,
+                          child: const Text('Create New Attendance'),
+                        ),
                     ],
                   ),
                   if (_isSubmitted)

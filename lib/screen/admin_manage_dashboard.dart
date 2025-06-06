@@ -449,6 +449,8 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
                                             mobileNumberArgs:
                                                 employee.mobileNumber,
                                             existingAttendance: attendance,
+                                            employeeName: employee.employeeName,
+                                            employeeId: employee.employeeId,
                                           ),
                                     ),
                                   );
