@@ -42,16 +42,19 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   bool _isLoading = true;
   bool _isFetching = false;
   bool _isEditing = false;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    _selectedDate =
+        widget.existingAttendance?.attendanceDate?.toDate() ?? DateTime.now();
     _initializeData();
   }
 
   Future<void> _initializeData() async {
     try {
-      await _fetchTodayAttendance();
+      await _fetchAttendanceForSelectedDate();
     } catch (e) {
       if (mounted) {
         _showErrorSnackBar('Initialization error: ${e.toString()}');
@@ -63,13 +66,17 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     }
   }
 
-  Future<void> _fetchTodayAttendance() async {
+  Future<void> _fetchAttendanceForSelectedDate() async {
     if (_isFetching || widget.mobileNumberArgs == null) return;
     setState(() => _isFetching = true);
 
     try {
       // First check if we have existing attendance data passed in
-      if (widget.existingAttendance != null) {
+      if (widget.existingAttendance != null &&
+          DateFormat(
+                'yyyy-MM-dd',
+              ).format(widget.existingAttendance!.attendanceDate!.toDate()) ==
+              DateFormat('yyyy-MM-dd').format(_selectedDate)) {
         _populateDataFromExisting(widget.existingAttendance!);
         return;
       }
@@ -78,11 +85,22 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       final attendanceData = await _firebaseService
           .fetchAttendanceByMobileNumberWithSpecificDate(
             widget.mobileNumberArgs!,
-            DateTime.now(),
+            _selectedDate,
           );
 
       if (attendanceData != null && mounted) {
         _populateDataFromExisting(attendanceData);
+      } else {
+        // No existing data for selected date - reset fields
+        setState(() {
+          _officeTimeIn = null;
+          _lunchTimeStart = null;
+          _lunchTimeEnd = null;
+          _officeTimeOut = null;
+          _isSubmitted = false;
+          _isEditing = false;
+          _locationMap.forEach((key, value) => _locationMap[key] = null);
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -92,6 +110,22 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       if (mounted) {
         setState(() => _isFetching = false);
       }
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      await _fetchAttendanceForSelectedDate();
     }
   }
 
@@ -141,11 +175,10 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     );
 
     if (time != null && mounted) {
-      final now = DateTime.now();
       final updatedTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
         time.hour,
         time.minute,
       );
@@ -214,7 +247,15 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     if (position == null) return;
 
     final now = DateTime.now();
-    final warning = _getTimeWarning(now, actionType);
+    final updatedTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      now.hour,
+      now.minute,
+    );
+
+    final warning = _getTimeWarning(updatedTime, actionType);
     if (warning.isNotEmpty) {
       _showWarningSnackBar(warning);
     }
@@ -223,16 +264,16 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       _locationMap[actionType] = position;
       switch (actionType) {
         case 'officeIn':
-          _officeTimeIn = now;
+          _officeTimeIn = updatedTime;
           break;
         case 'lunchStart':
-          _lunchTimeStart = now;
+          _lunchTimeStart = updatedTime;
           break;
         case 'lunchEnd':
-          _lunchTimeEnd = now;
+          _lunchTimeEnd = updatedTime;
           break;
         case 'officeOut':
-          _officeTimeOut = now;
+          _officeTimeOut = updatedTime;
           _isSubmitted = true;
           break;
       }
@@ -243,14 +284,20 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
 
   Future<void> _saveAttendanceToFirestore() async {
     try {
-      final now = DateTime.now();
+      if (_selectedDate.isAfter(DateTime.now())) {
+        if (mounted) {
+          _showErrorSnackBar('Cannot save attendance for future dates');
+        }
+        return;
+      }
+
       final status = _calculateStatus();
 
       final attendanceData = MarkAttendanceData(
         employeeId: widget.employeeId ?? '',
         employeeName: widget.employeeName ?? '',
         mobileNumber: widget.mobileNumberArgs ?? '',
-        attendanceDate: Timestamp.fromDate(now),
+        attendanceDate: Timestamp.fromDate(_selectedDate),
         officeTimeIn: _officeTimeIn != null
             ? Timestamp.fromDate(_officeTimeIn!)
             : null,
@@ -281,7 +328,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         officeTimeOut: _officeTimeOut != null
             ? Timestamp.fromDate(_officeTimeOut!)
             : null,
-
         officeTimeOutLocation: _locationMap['officeOut'] != null
             ? GeoPoint(
                 _locationMap['officeOut']!.latitude,
@@ -430,11 +476,29 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Text(
-                    'Today: ${DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now())}',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[800],
+                  InkWell(
+                    onTap: _isFetching ? null : () => _selectDate(context),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Selected Date: ${DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate)}',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                        ),
+                        if (_isFetching)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
