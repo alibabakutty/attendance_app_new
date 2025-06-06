@@ -102,7 +102,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
+      // final startOfDay = DateTime(today.year, today.month, today.day);
       final docId =
           '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(today)}';
 

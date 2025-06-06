@@ -48,7 +48,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   void initState() {
     super.initState();
     _selectedDate =
-        widget.existingAttendance?.attendanceDate?.toDate() ?? DateTime.now();
+        widget.existingAttendance?.attendanceDate.toDate() ?? DateTime.now();
     _initializeData();
   }
 
@@ -75,7 +75,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       if (widget.existingAttendance != null &&
           DateFormat(
                 'yyyy-MM-dd',
-              ).format(widget.existingAttendance!.attendanceDate!.toDate()) ==
+              ).format(widget.existingAttendance!.attendanceDate.toDate()) ==
               DateFormat('yyyy-MM-dd').format(_selectedDate)) {
         _populateDataFromExisting(widget.existingAttendance!);
         return;
@@ -487,7 +487,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Update Attendance for ${widget.employeeName ?? widget.mobileNumberArgs}',
+          'Update Attendance for ${widget.employeeName}',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue[800],
