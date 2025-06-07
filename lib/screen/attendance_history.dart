@@ -203,6 +203,10 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
         fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
       items: const [
         DropdownMenuItem(value: 'date', child: Text('Date')),
@@ -236,7 +240,10 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             Expanded(
               child: RadioListTile<String>(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Specific Date'),
+                title: const Text(
+                  'Specific Date',
+                  style: TextStyle(fontSize: 14),
+                ),
                 value: 'specific',
                 groupValue:
                     _specificDate != null ||
@@ -257,7 +264,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             Expanded(
               child: RadioListTile<String>(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Date Range'),
+                title: const Text('Date Range', style: TextStyle(fontSize: 14)),
                 value: 'range',
                 groupValue: _startDate != null || _endDate != null
                     ? 'range'
@@ -273,7 +280,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (_specificDate != null) _buildSpecificDateSelector(),
         if (_startDate != null && _endDate != null) _buildDateRangeSelector(),
       ],
@@ -298,12 +305,17 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     ),
                     filled: true,
                     fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   child: Text(
                     _startDate != null
                         ? DateFormat('dd-MM-yyyy').format(_startDate!)
                         : 'Select start date',
                     style: TextStyle(
+                      fontSize: 14,
                       color: _startDate != null
                           ? Colors.black87
                           : Colors.grey[600],
@@ -315,7 +327,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
@@ -328,12 +340,17 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     ),
                     filled: true,
                     fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   child: Text(
                     _endDate != null
                         ? DateFormat('dd-MM-yyyy').format(_endDate!)
                         : 'Select end date',
                     style: TextStyle(
+                      fontSize: 14,
                       color: _endDate != null
                           ? Colors.black87
                           : Colors.grey[600],
@@ -347,7 +364,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -356,14 +373,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: const Text(
               'Search by Date Range',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -386,12 +403,17 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               ),
               filled: true,
               fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
             ),
             child: Text(
               _specificDate != null
                   ? DateFormat('dd-MM-yyyy').format(_specificDate!)
                   : 'Select a date',
               style: TextStyle(
+                fontSize: 14,
                 color: _specificDate != null
                     ? Colors.black87
                     : Colors.grey[600],
@@ -402,7 +424,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -411,14 +433,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: const Text(
               'Search by Specific Date',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -441,13 +463,18 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         suffixIcon: controller.text.isNotEmpty
             ? IconButton(
-                icon: const Icon(Icons.clear),
+                icon: const Icon(Icons.clear, size: 20),
                 onPressed: () => setState(() => controller.clear()),
               )
             : null,
       ),
+      style: const TextStyle(fontSize: 14),
     );
   }
 
@@ -461,7 +488,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               label: 'Employee Name',
               controller: _employeeNameController,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -470,14 +497,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
                   'Search by Name',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -491,7 +518,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               label: 'Employee ID',
               controller: _employeeIdController,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -500,14 +527,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
                   'Search by ID',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -523,7 +550,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               keyboardType: TextInputType.phone,
               hintText: 'Enter mobile number',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -533,14 +560,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
                   'Search by Mobile',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -560,7 +587,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         child: Text(
           _errorMessage,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             color: Colors.redAccent,
             fontWeight: FontWeight.w600,
           ),
@@ -570,7 +597,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       return const Center(
         child: Text(
           'No attendance records found',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       );
     } else if (_attendanceList.isEmpty) {
@@ -579,10 +606,8 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
     return Column(
       children: [
-        // Column selector
         _buildColumnSelector(),
-        const SizedBox(height: 10),
-        // Excel-like table
+        const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Container(
@@ -590,6 +615,8 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: DataTable(
+              headingRowHeight: 36,
+              dataRowHeight: 32,
               sortColumnIndex: _sortColumnIndex,
               sortAscending: _sortAscending,
               headingRowColor: MaterialStateProperty.resolveWith<Color>(
@@ -598,22 +625,22 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
               columns: _buildDataColumns(),
               rows: _buildDataRows(),
               dividerThickness: 1,
-              dataRowMinHeight: 40,
-              dataRowMaxHeight: 60,
               headingTextStyle: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
+                fontSize: 12,
+                height: 1.1,
               ),
               dataTextStyle: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 color: Colors.black87,
+                height: 1.1,
               ),
             ),
           ),
         ),
-        // Export button
         if (_attendanceList.isNotEmpty) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -622,11 +649,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 ),
               );
             },
-            icon: const Icon(Icons.download),
-            label: const Text('Export to Excel'),
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text(
+              'Export to Excel',
+              style: TextStyle(fontSize: 14),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         ],
@@ -636,13 +666,16 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
   Widget _buildColumnSelector() {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 6,
+      runSpacing: 6,
       children: [
-        const Text('Columns:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text(
+          'Columns:',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
         ..._allAvailableColumns.map((column) {
           return FilterChip(
-            label: Text(column),
+            label: Text(column, style: const TextStyle(fontSize: 12)),
             selected: _selectedColumns.contains(column),
             onSelected: (selected) {
               setState(() {
@@ -660,6 +693,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                   ? Colors.white
                   : Colors.black87,
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           );
         }).toList(),
       ],
@@ -681,7 +715,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
   List<DataColumn> _buildDataColumns() {
     return _selectedColumns.map((column) {
       return DataColumn(
-        label: Text(column),
+        label: Text(column, style: const TextStyle(fontSize: 12)),
         tooltip: column,
         onSort: (columnIndex, ascending) {
           _onSort(columnIndex, ascending);
@@ -755,7 +789,6 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         color: MaterialStateProperty.resolveWith<Color>((
           Set<MaterialState> states,
         ) {
-          // Alternate row colors for better readability
           return _attendanceList.indexOf(attendance) % 2 == 0
               ? Colors.white
               : Colors.grey.shade50;
@@ -775,14 +808,21 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       case 'Date':
         return Text(
           DateFormat('dd-MM-yyyy').format(attendance.attendanceDate.toDate()),
+          style: const TextStyle(fontSize: 12, height: 1.1),
         );
       case 'Name':
-        return Text(attendance.employeeName);
+        return Text(
+          attendance.employeeName,
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'ID':
-        return Text(attendance.employeeId);
+        return Text(
+          attendance.employeeId,
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'Status':
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: _getStatusColor(attendance.status).withAlpha(51),
             borderRadius: BorderRadius.circular(12),
@@ -795,23 +835,39 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             attendance.status?.toUpperCase() ?? 'N/A',
             style: TextStyle(
               color: _getStatusColor(attendance.status),
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
+              height: 1.1,
             ),
           ),
         );
       case 'Time In':
-        return Text(formatTimestamp(attendance.officeTimeIn));
+        return Text(
+          formatTimestamp(attendance.officeTimeIn),
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'Time Out':
-        return Text(formatTimestamp(attendance.officeTimeOut));
+        return Text(
+          formatTimestamp(attendance.officeTimeOut),
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'Lunch Start':
-        return Text(formatTimestamp(attendance.lunchTimeStart));
+        return Text(
+          formatTimestamp(attendance.lunchTimeStart),
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'Lunch End':
-        return Text(formatTimestamp(attendance.lunchTimeEnd));
+        return Text(
+          formatTimestamp(attendance.lunchTimeEnd),
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       case 'Mobile':
-        return Text(attendance.mobileNumber ?? 'N/A');
+        return Text(
+          attendance.mobileNumber ?? 'N/A',
+          style: const TextStyle(fontSize: 12, height: 1.1),
+        );
       default:
-        return const Text('N/A');
+        return const Text('N/A', style: TextStyle(fontSize: 12, height: 1.1));
     }
   }
 
@@ -834,33 +890,36 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       backgroundColor: const Color(0xFFFFF9E5),
       appBar: AppBar(
         backgroundColor: Colors.orange.shade700,
-        title: const Text('Attendance Report'),
+        title: const Text('Attendance Report', style: TextStyle(fontSize: 16)),
         centerTitle: true,
         actions: [
           if (_attendanceList.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.filter_alt),
+              icon: const Icon(Icons.filter_alt, size: 20),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
                   builder: (context) => Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
                           'Select Columns to Display',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         _buildColumnSelector(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Close'),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(fontSize: 14),
+                          ),
                         ),
                       ],
                     ),
@@ -872,14 +931,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSearchTypeSelector(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               _buildSearchInputFields(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 12),
               _buildAttendanceList(),
             ],
           ),
