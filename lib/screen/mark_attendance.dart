@@ -102,7 +102,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
+      // final startOfDay = DateTime(today.year, today.month, today.day);
       final docId =
           '${authProvider.employeeId}_${DateFormat('yyyyMMdd').format(today)}';
 
@@ -204,6 +204,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       }
 
       final position = await Geolocator.getCurrentPosition(
+        // ignore: deprecated_member_use
         desiredAccuracy: LocationAccuracy.high,
       );
 
@@ -581,7 +582,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: _getStatusColor(status).withOpacity(0.2),
+                                color: _getStatusColor(
+                                  status,
+                                ).withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

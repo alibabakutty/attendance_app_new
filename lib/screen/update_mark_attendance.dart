@@ -230,7 +230,8 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        // ignore: deprecated_member_use
+        desiredAccuracy: LocationAccuracy.best, // Updated parameter
       );
       setState(() => _locationError = '');
       return position;

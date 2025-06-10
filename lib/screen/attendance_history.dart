@@ -616,11 +616,12 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
             child: DataTable(
               headingRowHeight: 36,
+              // ignore: deprecated_member_use
               dataRowHeight: 32,
               sortColumnIndex: _sortColumnIndex,
               sortAscending: _sortAscending,
-              headingRowColor: MaterialStateProperty.resolveWith<Color>(
-                (Set<MaterialState> states) => Colors.orange.shade100,
+              headingRowColor: WidgetStateProperty.resolveWith<Color>(
+                (Set<WidgetState> states) => Colors.orange.shade100,
               ),
               columns: _buildDataColumns(),
               rows: _buildDataRows(),
@@ -786,8 +787,8 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
       return DataRow(
         cells: cells,
-        color: MaterialStateProperty.resolveWith<Color>((
-          Set<MaterialState> states,
+        color: WidgetStateProperty.resolveWith<Color>((
+          Set<WidgetState> states,
         ) {
           return _attendanceList.indexOf(attendance) % 2 == 0
               ? Colors.white
