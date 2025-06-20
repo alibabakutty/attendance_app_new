@@ -1,0 +1,47 @@
+[33mcommit 0f617d3f42e5b3b4ca465b566f5f5717d0a86e5c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid-new-branch[m[33m)[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Fri Jun 20 17:25:11 2025 +0530
+
+    new try to save github
+
+[33mcommit ab036147d48d5387ba2385680b9035f8ea2cca93[m[33m ([m[1;32mmain[m[33m)[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Fri Jun 20 17:16:41 2025 +0530
+
+    now try to send github
+
+[33mcommit bd79d1d100570f0a5f4ac309f5d477e5e7b32a73[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Fri Jun 20 17:14:26 2025 +0530
+
+    now try for send to github
+
+[33mcommit 15f306e4ee1aac8e0f7ab6d5da191e223c720797[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Fri Jun 20 17:01:28 2025 +0530
+
+    amost finished yoshini officetimein problem
+
+[33mcommit 95def06eab6f688575eeac7da0cf8dc30fccb4b2[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Fri Jun 20 13:51:11 2025 +0530
+
+    now simplify auth service and provider successfully
+
+[33mcommit 85968546f154232729e566619172337b2969f36c[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Wed Jun 18 19:01:20 2025 +0530
+
+    mark attendance exception for officetimein 10:30 am for yoshini
+
+[33mcommit 959c2011396617325a127bb28d55e317f15a80c8[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Wed Jun 18 18:08:54 2025 +0530
+
+    now updated filered column in attendance history
+
+[33mcommit 748d572d42763d582a46959436bcb4463607010b[m
+Author: alibabakutty <tallysriram007@gmail.com>
+Date:   Wed Jun 18 12:34:53 2025 +0530
+
+    now lock office in time for attendance

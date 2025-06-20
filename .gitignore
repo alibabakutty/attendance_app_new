@@ -1,0 +1,61 @@
+# === Miscellaneous ===
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# === IntelliJ related ===
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# === VS Code (optional) ===
+.vscode/
+
+# === Flutter/Dart/Pub related ===
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/                 # This line already covers all build folders recursively
+
+# === iOS/macOS ===
+ios/Flutter/.last_build_id
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+macos/Flutter/ephemeral/
+macos/Flutter/Flutter.podspec
+
+# === Symbolication and Obfuscation ===
+app.*.symbols
+app.*.map.json
+
+# === Android-specific ===
+android/app/build/                     # <-- key line to ignore all debug/release APKs & intermediates
+*.apk                                  # Ignore any APK files globally
+*.so                                   # Ignore native shared libs
+*.dex                                  # Dalvik executables
+*.jar                                  # Java archives
+*.keystore                             # Signing keys (if any)
+
+# === Gradle ===
+.gradle/
+**/build/
+
+# === Firebase & Others ===
+firebase-debug.log
