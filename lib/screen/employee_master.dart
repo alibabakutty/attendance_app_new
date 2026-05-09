@@ -1,11 +1,12 @@
-import 'package:attendance_app/authentication/auth_provider.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:attendance_app/authentication/auth_service.dart';
 import 'package:attendance_app/modals/employee_master_data.dart';
-import 'package:attendance_app/service/firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:attendance_app/service/employee_api_service.dart';
 
 class EmployeeMaster extends StatefulWidget {
   const EmployeeMaster({super.key, this.mobileNumber});
@@ -16,9 +17,9 @@ class EmployeeMaster extends StatefulWidget {
 }
 
 class _EmployeeMasterState extends State<EmployeeMaster> {
-  final FirebaseService _firebaseService = FirebaseService();
+  final EmployeeApiService _employeeApiService = EmployeeApiService();
   final _formKey = GlobalKey<FormState>();
-  Timestamp? _dateOfJoining;
+  DateTime? _dateOfJoining;
   final TextEditingController _employeeIdController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _mobileNumberController = TextEditingController();
@@ -29,6 +30,9 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
   final TextEditingController _aadhaarDisplayController =
       TextEditingController();
   final TextEditingController _panDisplayController = TextEditingController();
+  File? _selectedImage;
+  String? _employeeImageData;
+  final ImagePicker _picker = ImagePicker();
 
   bool _isSubmitting = false;
   bool _obscurePassword = true;
@@ -95,8 +99,8 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
   Future<void> _fetchEmployeeData() async {
     if (mobileNumberFromArgs != null) {
       try {
-        _employeeData = await _firebaseService
-            .fetchEmployeeMasterDataByMobileNumber(mobileNumberFromArgs!);
+        _employeeData = await _employeeApiService
+            .getEmployeeByMobileNumber(mobileNumberFromArgs!);
         if (_employeeData != null) {
           setState(() {
             _employeeIdController.text = _employeeData!.employeeId;
@@ -107,6 +111,7 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
             _panController.text = _employeeData!.panNumber;
             _emailController.text = _employeeData!.email;
             _passwordController.text = _employeeData!.password;
+            _employeeImageData = _employeeData!.employeeImageData;
             _isEditing = true;
 
             _updateAadhaarDisplay();
@@ -121,6 +126,19 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
@@ -128,57 +146,48 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
       try {
         if (_dateOfJoining == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select a date of joining')),
+            const SnackBar(
+              content: Text(
+                'Please select date of joining',
+              ),
+            ),
           );
+
           return;
         }
 
-        final employeeDataMap = {
-          'employee_id': _employeeIdController.text.trim(),
-          'employee_name': _nameController.text.trim(),
-          'mobile_number': _mobileNumberController.text.trim(),
-          'date_of_joining': _dateOfJoining!,
-          'aadhaar_number': _aadhaarController.text.trim(),
-          'pan_number': _panController.text.trim(),
-          'email': _emailController.text.trim(),
-          'password': _passwordController.text.trim(),
-          'updated_at': Timestamp.now(),
-        };
+        String? base64Image = _employeeImageData;
+
+        if (_selectedImage != null) {
+          final imageBytes = await _selectedImage!.readAsBytes();
+
+          base64Image = base64Encode(imageBytes);
+        }
+
+        final employeeData = EmployeeMasterData(
+          employeeId: _employeeIdController.text.trim(),
+          employeeName: _nameController.text.trim(),
+          mobileNumber: _mobileNumberController.text.trim(),
+          dateOfJoining: _dateOfJoining,
+          aadhaarNumber: _aadhaarController.text.trim(),
+          panNumber: _panController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          createdAt: DateTime.now(),
+          employeeImageData: base64Image,
+        );
 
         bool success;
 
         if (_isEditing) {
-          success =
-              await _firebaseService.updateEmployeeMasterDataByMobileNumber(
+          success = await _employeeApiService.updateEmployee(
             _mobileNumberController.text.trim(),
-            employeeDataMap,
+            employeeData,
           );
         } else {
-          final authProvider =
-              Provider.of<AuthProvider>(context, listen: false);
-          await authProvider.createAccount(
-            username: _nameController.text.trim(),
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-            employeeId: _employeeIdController.text.trim(),
-            mobileNumber: _mobileNumberController.text.trim(),
-            isAdmin: false,
-          );
-
-          final employeeMasterData = EmployeeMasterData(
-            employeeId: _employeeIdController.text.trim(),
-            employeeName: _nameController.text.trim(),
-            mobileNumber: _mobileNumberController.text.trim(),
-            dateOfJoining: _dateOfJoining!,
-            aadhaarNumber: _aadhaarController.text.trim(),
-            panNumber: _panController.text.trim(),
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-            createdAt: Timestamp.now(),
-          );
-
+          final token = await AuthService.getToken();
           success =
-              await _firebaseService.addNewEmployeeData(employeeMasterData);
+              await _employeeApiService.createEmployee(employeeData, token!);
         }
 
         if (success && mounted) {
@@ -186,26 +195,34 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
             SnackBar(
               content: Text(
                 _isEditing
-                    ? 'Employee updated successfully!'
-                    : 'Employee added successfully!',
+                    ? 'Employee updated successfully'
+                    : 'Employee saved successfully',
               ),
             ),
           );
+
           Navigator.pop(context);
-        } else if (mounted) {
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Operation failed. Please try again.')),
+              content: Text(
+                'Operation failed',
+              ),
+            ),
           );
         }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error: $e',
+            ),
+          ),
+        );
       } finally {
-        if (mounted) setState(() => _isSubmitting = false);
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+        }
       }
     }
   }
@@ -233,7 +250,7 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
     );
     if (picked != null) {
       setState(() {
-        _dateOfJoining = Timestamp.fromDate(picked);
+        _dateOfJoining = picked;
       });
     }
   }
@@ -257,6 +274,43 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                Center(
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey.shade300,
+                          backgroundImage: _selectedImage != null
+                              ? FileImage(_selectedImage!)
+                              : (_employeeImageData != null &&
+                                      _employeeImageData!.isNotEmpty)
+                                  ? MemoryImage(
+                                      base64Decode(
+                                        _employeeImageData!,
+                                      ),
+                                    )
+                                  : null,
+                          child: _selectedImage == null &&
+                                  (_employeeImageData == null ||
+                                      _employeeImageData!.isEmpty)
+                              ? const Icon(
+                                  Icons.camera_alt,
+                                  size: 40,
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _pickImage,
+                        child: const Text('Select Employee Image'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 // Employee ID Field
                 TextFormField(
                   controller: _employeeIdController,
@@ -334,7 +388,7 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
                           _dateOfJoining == null
                               ? 'Select date'
                               : DateFormat('dd/MM/yyyy')
-                                  .format(_dateOfJoining!.toDate()),
+                                  .format(_dateOfJoining!),
                         ),
                         const Icon(Icons.arrow_drop_down),
                       ],

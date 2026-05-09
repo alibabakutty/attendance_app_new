@@ -2,6 +2,7 @@ import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/modals/employee_master_data.dart';
 import 'package:attendance_app/modals/mark_attendance_data.dart';
 import 'package:attendance_app/screen/update_mark_attendance.dart';
+import 'package:attendance_app/service/employee_api_service.dart';
 import 'package:attendance_app/service/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ class AdminManageDashboard extends StatefulWidget {
 }
 
 class _AdminManageDashboardState extends State<AdminManageDashboard> {
+  final EmployeeApiService _employeeApiService = EmployeeApiService();
   final FirebaseService _firebaseService = FirebaseService();
   List<EmployeeMasterData> _employees = [];
   bool _isLoading = true;
@@ -25,18 +27,29 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
   }
 
   Future<void> _fetchEmployees() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+
     try {
-      final data = await _firebaseService.getAllEmployeeMasterData();
+      final data = await _employeeApiService.getAllEmployees();
+
+      if (!mounted) return;
+
       setState(() {
         _employees = data;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load employees: $e')));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load employees: $e'),
+        ),
+      );
     }
   }
 
@@ -46,11 +59,19 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
   ) async {
     try {
       return await _firebaseService
-          .fetchAttendanceByMobileNumberWithSpecificDate(mobileNumber, date);
+          .fetchAttendanceByMobileNumberWithSpecificDate(
+        mobileNumber,
+        date,
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error fetching attendance: $e')));
+      if (!mounted) return null;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching attendance: $e'),
+        ),
+      );
+
       return null;
     }
   }
@@ -76,11 +97,11 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
               _buildDetailRow('PAN', employee.panNumber),
               _buildDetailRow(
                 'Date of Joining',
-                employee.dateOfJoining.toDate().toString().split(' ')[0],
+                employee.dateOfJoining.toString().split(' ')[0],
               ),
               _buildDetailRow(
                 'Account Created',
-                employee.createdAt.toDate().toString().split(' ')[0],
+                employee.createdAt.toString().split(' ')[0],
               ),
               FutureBuilder<MarkAttendanceData?>(
                 future: _fetchEmployeeAttendance(
@@ -354,7 +375,7 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              employee.dateOfJoining.toDate().toString().split(
+                              employee.dateOfJoining.toString().split(
                                     ' ',
                                   )[0],
                               style: const TextStyle(color: Color(0xFFB0BEC5)),

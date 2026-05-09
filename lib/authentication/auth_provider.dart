@@ -1,205 +1,223 @@
 import 'dart:async';
-
-import 'package:attendance_app/authentication/auth.utils.dart';
-import 'package:attendance_app/authentication/auth_exceptions.dart';
-import 'package:attendance_app/authentication/auth_models.dart';
-import 'package:attendance_app/authentication/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
-  final Completer<void> _initializationCompleter = Completer<void>();
-
-  User? _currentUser;
-  UserData? _userData;
-  String? _errorMessage;
-  bool _isLoading = false;
-  DateTime? _sessionExpiry;
-  late SharedPreferences _prefs;
 
   AuthProvider({AuthService? authService})
       : _authService = authService ?? AuthService() {
     _init();
   }
 
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  final Completer<void> _initializationCompleter = Completer<void>();
+
+  String? _token;
+  String? _username;
+  String? _role;
+  String? _errorMessage;
+
+  bool _isLoading = false;
+  bool _isInitialized = false;
+
+  DateTime? _expiryDate;
+
   Future<void> get initializationDone => _initializationCompleter.future;
 
-  // Getters
-  bool get isEmployee => _userData?.isAdmin == false;
-  bool get isAdmin => _userData?.isAdmin ?? false;
-  bool get isLoggedIn => _currentUser != null;
-  String? get username => _userData?.username;
-  String? get email => _userData?.email;
-  String? get employeeId => _userData?.employeeId;
-  String? get mobileNumber => _userData?.mobileNumber;
-  User? get currentUser => _currentUser;
-  String? get errorMessage => _errorMessage;
+  // =========================
+  // GETTERS
+  // =========================
+
+  bool get isLoggedIn => _token != null && !JwtDecoder.isExpired(_token!);
+
+  bool get isAdmin => _role == 'admin';
+
+  bool get isEmployee => _role == 'employee';
+
   bool get isLoading => _isLoading;
-  DateTime? get sessionExpiry => _sessionExpiry;
-  bool get isExceptTimeIn => _userData?.isExceptTimeIn ?? false;
+
+  bool get isInitialized => _isInitialized;
+
+  String? get token => _token;
+
+  String? get username => _username;
+
+  String? get role => _role;
+
+  String? get errorMessage => _errorMessage;
+
+  DateTime? get expiryDate => _expiryDate;
+
+  // =========================
+  // INIT
+  // =========================
 
   Future<void> _init() async {
-    await _loadSession();
-    _setupAuthListener();
-
-    if (isLoggedIn && _currentUser != null) {
-      await _validateAndRefreshSession();
-    }
-    _initializationCompleter.complete();
-  }
-
-  Future<void> _validateAndRefreshSession() async {
     try {
-      _isLoading = true;
-      notifyListeners();
-
-      await _currentUser!.reload();
-      final freshUser = _authService.currentUser;
-
-      if (freshUser == null) {
-        await _clearSession();
-        return;
-      }
-
-      final token = await freshUser.getIdToken(true);
-      if (JwtDecoder.isExpired(token!)) {
-        await _clearSession();
-        return;
-      }
-      await _loadUserData(freshUser.uid);
+      await _loadSession();
     } catch (e) {
-      await _clearSession();
+      debugPrint('Init Error: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
+      _isInitialized = true;
 
-  void _setupAuthListener() {
-    _authService.authStateChanges.listen((User? user) async {
-      _currentUser = user;
-      if (user != null) {
-        await _loadUserData(user.uid);
-        await _saveSession();
-      } else {
-        await _clearSession();
+      if (!_initializationCompleter.isCompleted) {
+        _initializationCompleter.complete();
       }
-      notifyListeners();
-    });
-  }
 
-  Future<void> _loadSession() async {
-    _prefs = await SharedPreferences.getInstance();
-    _sessionExpiry =
-        _prefs.getString('sessionExpiry')?.let((s) => DateTime.parse(s));
-  }
-
-  Future<void> _saveSession() async {
-    _sessionExpiry = DateTime.now().add(Duration(days: 7));
-    await _prefs.setString('sessionExpiry', _sessionExpiry!.toIso8601String());
-  }
-
-  Future<void> _clearSession() async {
-    await _prefs.clear();
-    _currentUser = null;
-    _errorMessage = null;
-    _sessionExpiry = null;
-  }
-
-  Future<void> _loadUserData(String uid) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      _userData = await _authService.getUserData(uid);
-      await _saveSession();
-    } catch (e) {
-      _errorMessage = 'Failed to load user data';
-      await _clearSession();
-    } finally {
-      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> loginWithEmail(
-      {required String email, required String password}) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
+  // =========================
+  // LOGIN
+  // =========================
 
-      await _authService.signIn(email: email, password: password);
-      return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> createAccount({
+  Future<bool> login({
     required String username,
-    required String email,
     required String password,
-    required String employeeId,
-    required String mobileNumber,
-    bool isAdmin = false,
-    bool isExceptTimeIn = false,
   }) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      await _authService.createNewAccount(
+      final response = await _authService.login(
         username: username,
-        email: email,
         password: password,
-        employeeId: employeeId,
-        mobileNumber: mobileNumber,
-        isAdmin: isAdmin,
-        isExceptTimeIn: isExceptTimeIn,
       );
+
+      _token = response['token'];
+      _username = response['username'];
+      _role = response['role'];
+
+      if (_token == null || _token!.isEmpty) {
+        throw Exception('Token is missing');
+      }
+
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(_token!);
+
+      if (decodedToken.containsKey('exp')) {
+        _expiryDate = DateTime.fromMillisecondsSinceEpoch(
+          decodedToken['exp'] * 1000,
+        );
+      }
+
+      await _saveSession();
+
+      notifyListeners();
+
       return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.message;
+    } catch (e) {
+      _errorMessage = e.toString();
+
+      debugPrint('Login Error: $e');
+
       return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
+
+  // =========================
+  // LOAD SESSION
+  // =========================
+
+  Future<void> _loadSession() async {
+    try {
+      _token = await _storage.read(key: 'jwt_token');
+      _username = await _storage.read(key: 'username');
+      _role = await _storage.read(key: 'role');
+
+      if (_token == null) {
+        return;
+      }
+
+      bool isExpired = JwtDecoder.isExpired(_token!);
+
+      if (isExpired) {
+        await logout();
+        return;
+      }
+
+      Map<String, dynamic> decoded = JwtDecoder.decode(_token!);
+
+      if (decoded.containsKey('exp')) {
+        _expiryDate = DateTime.fromMillisecondsSinceEpoch(
+          decoded['exp'] * 1000,
+        );
+      }
+    } catch (e) {
+      debugPrint('Load Session Error: $e');
+      await logout();
+    }
+  }
+
+  // =========================
+  // SAVE SESSION
+  // =========================
+
+  Future<void> _saveSession() async {
+    await _storage.write(
+      key: 'jwt_token',
+      value: _token,
+    );
+
+    await _storage.write(
+      key: 'username',
+      value: _username,
+    );
+
+    await _storage.write(
+      key: 'role',
+      value: _role,
+    );
+  }
+
+  // =========================
+  // LOGOUT
+  // =========================
 
   Future<void> logout() async {
     try {
-      await _authService.signOut();
-      await _clearSession();
+      _token = null;
+      _username = null;
+      _role = null;
+      _expiryDate = null;
+      _errorMessage = null;
+
+      await _storage.deleteAll();
+
+      notifyListeners();
     } catch (e) {
-      _errorMessage = 'Logout failed';
+      debugPrint('Logout Error: $e');
     }
   }
 
-  Future<bool> deleteAccount({required String currentPassword}) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
+  // =========================
+  // TOKEN VALIDATION
+  // =========================
 
-      await _authService.deleteAccount(currentPassword: currentPassword);
-      await _clearSession();
+  bool isTokenExpired() {
+    if (_token == null) {
       return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
+
+    return JwtDecoder.isExpired(_token!);
+  }
+
+  // =========================
+  // AUTH HEADER
+  // =========================
+
+  Map<String, String> get authHeaders {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $_token',
+    };
   }
 }

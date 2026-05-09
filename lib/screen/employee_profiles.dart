@@ -1,7 +1,8 @@
 import 'package:attendance_app/modals/employee_master_data.dart';
 import 'package:attendance_app/screen/employee_master.dart';
-import 'package:attendance_app/service/firebase_service.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:attendance_app/service/employee_api_service.dart';
 
 class EmployeeProfiles extends StatefulWidget {
   const EmployeeProfiles({super.key});
@@ -11,7 +12,7 @@ class EmployeeProfiles extends StatefulWidget {
 }
 
 class _EmployeeProfilesState extends State<EmployeeProfiles> {
-  final FirebaseService _firebaseService = FirebaseService();
+  final EmployeeApiService _employeeApiService = EmployeeApiService();
   List<EmployeeMasterData> _employeeData = [];
   bool _isLoading = true;
 
@@ -23,18 +24,25 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
 
   Future<void> _fetchEmployees() async {
     setState(() => _isLoading = true);
+
     try {
-      final data = await _firebaseService.getAllEmployeeMasterData();
+      final data = await _employeeApiService.getAllEmployees();
+
       setState(() {
         _employeeData = data;
+
         _isLoading = false;
       });
-      print("Fetched ${_employeeData.length} employees");
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      print("Error fetching employees: $e");
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load employee data: $e')),
+        SnackBar(
+          content: Text(
+            'Failed to load employees: $e',
+          ),
+        ),
       );
     }
   }
@@ -55,9 +63,24 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: const CircleAvatar(
+        leading: CircleAvatar(
+          radius: 28,
           backgroundColor: Colors.blueAccent,
-          child: Icon(Icons.person, color: Colors.white),
+          backgroundImage: employee.employeeImageData != null &&
+                  employee.employeeImageData!.isNotEmpty
+              ? MemoryImage(
+                  base64Decode(
+                    employee.employeeImageData!,
+                  ),
+                )
+              : null,
+          child: employee.employeeImageData == null ||
+                  employee.employeeImageData!.isEmpty
+              ? const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                )
+              : null,
         ),
         title: Text(
           employee.employeeName,
@@ -78,8 +101,8 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFF0D47A1)),
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => EmployeeMaster(
@@ -87,6 +110,8 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
               ),
             ),
           );
+
+          _fetchEmployees();
         },
       ),
     );
@@ -120,8 +145,9 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
                   ),
                 ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/employeeMaster');
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/employeeMaster');
+          _fetchEmployees();
         },
         backgroundColor: Colors.blueAccent,
         tooltip: 'Add Employee',

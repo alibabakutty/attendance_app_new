@@ -192,7 +192,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
   Widget _buildSearchTypeSelector() {
     return DropdownButtonFormField<String>(
-      value: _searchType,
+      initialValue: _searchType,
       decoration: InputDecoration(
         labelText: 'Search By',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -623,8 +623,6 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         'Status',
         'Time In',
         'Time Out',
-        'Lunch Start',
-        'Lunch End',
         'Mobile',
       ];
 
@@ -669,16 +667,6 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
           case 'Time Out':
             compareResult = (a.officeTimeOut ?? Timestamp(0, 0)).compareTo(
               b.officeTimeOut ?? Timestamp(0, 0),
-            );
-            break;
-          case 'Lunch Start':
-            compareResult = (a.lunchTimeStart ?? Timestamp(0, 0)).compareTo(
-              b.lunchTimeStart ?? Timestamp(0, 0),
-            );
-            break;
-          case 'Lunch End':
-            compareResult = (a.lunchTimeEnd ?? Timestamp(0, 0)).compareTo(
-              b.lunchTimeEnd ?? Timestamp(0, 0),
             );
             break;
           case 'Mobile':
@@ -765,16 +753,6 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       case 'Time Out':
         return Text(
           formatTimestamp(attendance.officeTimeOut),
-          style: const TextStyle(fontSize: 12, height: 1.1),
-        );
-      case 'Lunch Start':
-        return Text(
-          formatTimestamp(attendance.lunchTimeStart),
-          style: const TextStyle(fontSize: 12, height: 1.1),
-        );
-      case 'Lunch End':
-        return Text(
-          formatTimestamp(attendance.lunchTimeEnd),
           style: const TextStyle(fontSize: 12, height: 1.1),
         );
       case 'Mobile':

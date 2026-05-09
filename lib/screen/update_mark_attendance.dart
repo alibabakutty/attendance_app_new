@@ -28,14 +28,10 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   final FirebaseService _firebaseService = FirebaseService();
   final Map<String, Position?> _locationMap = {
     'officeIn': null,
-    'lunchStart': null,
-    'lunchEnd': null,
     'officeOut': null,
   };
 
   DateTime? _officeTimeIn;
-  DateTime? _lunchTimeStart;
-  DateTime? _lunchTimeEnd;
   DateTime? _officeTimeOut;
   bool _isSubmitted = false;
   String _locationError = '';
@@ -94,8 +90,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         // No existing data for selected date - reset fields but keep the date
         setState(() {
           _officeTimeIn = null;
-          _lunchTimeStart = null;
-          _lunchTimeEnd = null;
           _officeTimeOut = null;
           _isSubmitted = false;
           _locationMap.forEach((key, value) => _locationMap[key] = null);
@@ -131,17 +125,10 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   void _populateDataFromExisting(MarkAttendanceData attendanceData) {
     setState(() {
       _officeTimeIn = attendanceData.officeTimeIn?.toDate();
-      _lunchTimeStart = attendanceData.lunchTimeStart?.toDate();
-      _lunchTimeEnd = attendanceData.lunchTimeEnd?.toDate();
       _officeTimeOut = attendanceData.officeTimeOut?.toDate();
       _isSubmitted = _officeTimeOut != null;
 
       _updateLocationFromData('officeIn', attendanceData.officeTimeInLocation);
-      _updateLocationFromData(
-        'lunchStart',
-        attendanceData.lunchTimeStartLocation,
-      );
-      _updateLocationFromData('lunchEnd', attendanceData.lunchTimeEndLocation);
       _updateLocationFromData(
         'officeOut',
         attendanceData.officeTimeOutLocation,
@@ -185,12 +172,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         switch (actionType) {
           case 'officeIn':
             _officeTimeIn = updatedTime;
-            break;
-          case 'lunchStart':
-            _lunchTimeStart = updatedTime;
-            break;
-          case 'lunchEnd':
-            _lunchTimeEnd = updatedTime;
             break;
           case 'officeOut':
             _officeTimeOut = updatedTime;
@@ -265,12 +246,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         case 'officeIn':
           _officeTimeIn = updatedTime;
           break;
-        case 'lunchStart':
-          _lunchTimeStart = updatedTime;
-          break;
-        case 'lunchEnd':
-          _lunchTimeEnd = updatedTime;
-          break;
         case 'officeOut':
           _officeTimeOut = updatedTime;
           _isSubmitted = true;
@@ -303,23 +278,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
             ? GeoPoint(
                 _locationMap['officeIn']!.latitude,
                 _locationMap['officeIn']!.longitude,
-              )
-            : null,
-        lunchTimeStart: _lunchTimeStart != null
-            ? Timestamp.fromDate(_lunchTimeStart!)
-            : null,
-        lunchTimeStartLocation: _locationMap['lunchStart'] != null
-            ? GeoPoint(
-                _locationMap['lunchStart']!.latitude,
-                _locationMap['lunchStart']!.longitude,
-              )
-            : null,
-        lunchTimeEnd:
-            _lunchTimeEnd != null ? Timestamp.fromDate(_lunchTimeEnd!) : null,
-        lunchTimeEndLocation: _locationMap['lunchEnd'] != null
-            ? GeoPoint(
-                _locationMap['lunchEnd']!.latitude,
-                _locationMap['lunchEnd']!.longitude,
               )
             : null,
         officeTimeOut:
@@ -360,22 +318,16 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
 
   String _calculateStatus() {
     if (_officeTimeIn == null) return 'absent';
-    if (_officeTimeOut == null) return 'half-day';
-    return (_lunchTimeStart != null && _lunchTimeEnd != null)
-        ? 'present'
-        : 'half-day';
+
+    if (_officeTimeIn != null && _officeTimeOut != null) {
+      return 'present';
+    }
+    return 'half-day';
   }
 
   bool _isWithinOfficeTimeInRange(DateTime time) {
     final startTime = DateTime(time.year, time.month, time.day, 9, 00);
     final endTime = DateTime(time.year, time.month, time.day, 9, 45);
-    return time.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
-        time.isBefore(endTime.add(const Duration(seconds: 1)));
-  }
-
-  bool _isWithinLunchTimeRange(DateTime time) {
-    final startTime = DateTime(time.year, time.month, time.day, 13, 15);
-    final endTime = DateTime(time.year, time.month, time.day, 14, 30);
     return time.isAfter(startTime.subtract(const Duration(seconds: 1))) &&
         time.isBefore(endTime.add(const Duration(seconds: 1)));
   }
@@ -395,13 +347,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         return time.isBefore(startTime)
             ? '⚠️ Too early (allowed after 9:00 AM)'
             : '⚠️ Too late (allowed before 9:45 AM)';
-      case 'lunchStart':
-      case 'lunchEnd':
-        if (_isWithinLunchTimeRange(time)) return '';
-        final startTime = DateTime(time.year, time.month, time.day, 13, 15);
-        return time.isBefore(startTime)
-            ? '⚠️ Too early (allowed after 1:15 PM)'
-            : '⚠️ Too late (allowed before 2:30 PM)';
       case 'officeOut':
         if (_isWithinOfficeTimeOutRange(time)) return '';
         final startTime = DateTime(time.year, time.month, time.day, 18, 30);
@@ -417,8 +362,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     if (_officeTimeOut != null) return 'Completed';
     if (_officeTimeIn == null) return actionType == 'officeIn' ? 'Absent' : '';
     if (actionType == 'officeIn' && _officeTimeIn != null) return 'Present';
-    if (actionType == 'lunchStart' && _lunchTimeStart != null) return 'Present';
-    if (actionType == 'lunchEnd' && _lunchTimeEnd != null) return 'Present';
     if (actionType == 'officeOut' && _officeTimeOut != null) return 'Completed';
     return '';
   }
@@ -560,20 +503,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                     actionType: 'officeIn',
                   ),
                   _buildAttendanceCard(
-                    icon: Icons.restaurant,
-                    title: 'Lunch Start',
-                    time: _lunchTimeStart,
-                    location: _locationMap['lunchStart'],
-                    actionType: 'lunchStart',
-                  ),
-                  _buildAttendanceCard(
-                    icon: Icons.restaurant_menu,
-                    title: 'Lunch End',
-                    time: _lunchTimeEnd,
-                    location: _locationMap['lunchEnd'],
-                    actionType: 'lunchEnd',
-                  ),
-                  _buildAttendanceCard(
                     icon: Icons.logout,
                     title: 'Office Time-Out',
                     time: _officeTimeOut,
@@ -592,14 +521,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
                       ElevatedButton(
                         onPressed: () => _showTimeUpdateDialog('officeIn'),
                         child: const Text('Update Office In'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => _showTimeUpdateDialog('lunchStart'),
-                        child: const Text('Update Lunch Start'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => _showTimeUpdateDialog('lunchEnd'),
-                        child: const Text('Update Lunch End'),
                       ),
                       ElevatedButton(
                         onPressed: () => _showTimeUpdateDialog('officeOut'),
@@ -655,10 +576,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       switch (actionType) {
         case 'officeIn':
           showWarning = !_isWithinOfficeTimeInRange(time);
-          break;
-        case 'lunchStart':
-        case 'lunchEnd':
-          showWarning = !_isWithinLunchTimeRange(time);
           break;
         case 'officeOut':
           showWarning = !_isWithinOfficeTimeOutRange(time);
@@ -835,14 +752,6 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     switch (actionType) {
       case 'officeIn':
         return _officeTimeIn == null;
-      case 'lunchStart':
-        return _officeTimeIn != null &&
-            _lunchTimeStart == null &&
-            _officeTimeOut == null;
-      case 'lunchEnd':
-        return _lunchTimeStart != null &&
-            _lunchTimeEnd == null &&
-            _officeTimeOut == null;
       case 'officeOut':
         return _officeTimeIn != null && _officeTimeOut == null;
       default:

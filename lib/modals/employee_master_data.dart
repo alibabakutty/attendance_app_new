@@ -1,15 +1,16 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class EmployeeMasterData {
   final String employeeId;
   final String employeeName;
   final String mobileNumber;
-  final Timestamp dateOfJoining;
+  final DateTime? dateOfJoining;
   final String aadhaarNumber;
   final String panNumber;
   final String email;
   final String password;
-  final Timestamp createdAt;
+  final DateTime? createdAt;
+  final String? employeeImageData;
 
   EmployeeMasterData({
     required this.employeeId,
@@ -21,35 +22,43 @@ class EmployeeMasterData {
     required this.email,
     required this.password,
     required this.createdAt,
+    required this.employeeImageData,
   });
 
-  // convert data from Firestore to EmployeeMasterData object
-  factory EmployeeMasterData.fromFirestore(Map<String, dynamic> data) {
+  // FROM API RESPONSE
+  factory EmployeeMasterData.fromJson(Map<String, dynamic> json) {
     return EmployeeMasterData(
-      employeeId: data['employee_id'] ?? '',
-      employeeName: data['employee_name'] ?? '',
-      mobileNumber: data['mobile_number'] ?? '',
-      dateOfJoining: data['date_of_joining'] ?? Timestamp.now(),
-      aadhaarNumber: data['aadhaar_number'] ?? '',
-      panNumber: data['pan_number'] ?? '',
-      email: data['email'] ?? '',
-      password: data['password'] ?? '',
-      createdAt: data['created_at'] ?? Timestamp.now(),
+      employeeId: json['employeeId'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      mobileNumber: json['mobileNumber'] ?? '',
+      dateOfJoining: json['dateOfJoining'] != null
+          ? DateTime.parse(json['dateOfJoining'])
+          : null,
+      aadhaarNumber: json['aadhaarNumber'] ?? '',
+      panNumber: json['panNumber'] ?? '',
+      email: json['email'] ?? '',
+      password: json['password'] ?? '',
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      employeeImageData: json['employeeImageData'],
     );
   }
 
-  // convert EmployeeMasterData object to Firestore data
-  Map<String, dynamic> toFirestore() {
+  // TO API REQUEST
+  Map<String, dynamic> toJson() {
     return {
-      'employee_id': employeeId,
-      'employee_name': employeeName,
-      'mobile_number': mobileNumber,
-      'date_of_joining': dateOfJoining,
-      'aadhaar_number': aadhaarNumber,
-      'pan_number': panNumber,
-      'email': email,
-      'password': password,
-      'created_at': createdAt,
+      "employeeId": employeeId,
+      "employeeName": employeeName,
+      "mobileNumber": mobileNumber,
+      'dateOfJoining': dateOfJoining != null
+          ? DateFormat('yyyy-MM-dd').format(dateOfJoining!)
+          : null,
+      "aadhaarNumber": aadhaarNumber,
+      "panNumber": panNumber,
+      "email": email,
+      "password": password,
+      "createdAt": createdAt?.toIso8601String(),
+      "employeeImageData": employeeImageData,
     };
   }
 }

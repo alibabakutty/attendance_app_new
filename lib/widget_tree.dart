@@ -28,7 +28,7 @@ class _WidgetTreeState extends State<WidgetTree> {
   }
 
   void _redirectBasedOnRole(AuthProvider authProvider) {
-    final route = authProvider.isAdmin ? '/adminManageDashboard' : '/home';
+    final route = authProvider.isAdmin ? '/home' : '/home';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.pushReplacementNamed(context, route);

@@ -234,6 +234,7 @@ class _HomePageState extends State<HomePage> {
                         end: Alignment.bottomRight,
                       ),
                       onTap: () => _navigateTo(const EmployeeProfiles()),
+                      adminOnly: true,
                     ),
                     _buildDashboardCard(
                       icon: Icons.settings,
