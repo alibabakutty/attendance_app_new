@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+
 import 'auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -19,6 +23,7 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   String? _username;
   String? _role;
+  String? _employeeImageData;
   String? _errorMessage;
 
   bool _isLoading = false;
@@ -34,9 +39,9 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => _token != null && !JwtDecoder.isExpired(_token!);
 
-  bool get isAdmin => _role == 'admin';
+  bool get isAdmin => _role == 'ADMIN';
 
-  bool get isEmployee => _role == 'employee';
+  bool get isEmployee => _role == 'EMPLOYEE';
 
   bool get isLoading => _isLoading;
 
@@ -48,9 +53,25 @@ class AuthProvider extends ChangeNotifier {
 
   String? get role => _role;
 
+  String? get employeeImageData => _employeeImageData;
+
   String? get errorMessage => _errorMessage;
 
   DateTime? get expiryDate => _expiryDate;
+
+  // Decoded image bytes for UI
+  Uint8List? get employeeImageBytes {
+    if (_employeeImageData == null || _employeeImageData!.isEmpty) {
+      return null;
+    }
+
+    try {
+      return base64Decode(_employeeImageData!);
+    } catch (e) {
+      debugPrint('Image decode error: $e');
+      return null;
+    }
+  }
 
   // =========================
   // INIT
@@ -94,11 +115,27 @@ class AuthProvider extends ChangeNotifier {
       _username = response['username'];
       _role = response['role'];
 
+      // FIXED: use correct key from backend
+      _employeeImageData = response['userImageData']?.replaceFirst(
+        'data:image/jpeg;base64,',
+        '',
+      );
+
+      debugPrint(
+        'Image exists: ${_employeeImageData != null}',
+      );
+
+      debugPrint(
+        'Image length: ${_employeeImageData?.length}',
+      );
+
       if (_token == null || _token!.isEmpty) {
         throw Exception('Token is missing');
       }
 
-      Map<String, dynamic> decodedToken = JwtDecoder.decode(_token!);
+      final decodedToken = JwtDecoder.decode(
+        _token!,
+      );
 
       if (decodedToken.containsKey('exp')) {
         _expiryDate = DateTime.fromMillisecondsSinceEpoch(
@@ -114,7 +151,9 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
 
-      debugPrint('Login Error: $e');
+      debugPrint(
+        'Login Error: $e',
+      );
 
       return false;
     } finally {
@@ -129,30 +168,53 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _loadSession() async {
     try {
-      _token = await _storage.read(key: 'jwt_token');
-      _username = await _storage.read(key: 'username');
-      _role = await _storage.read(key: 'role');
+      _token = await _storage.read(
+        key: 'jwt_token',
+      );
+
+      _username = await _storage.read(
+        key: 'username',
+      );
+
+      _role = await _storage.read(
+        key: 'role',
+      );
+
+      _employeeImageData = await _storage.read(
+        key: 'employeeImageData',
+      );
 
       if (_token == null) {
         return;
       }
 
-      bool isExpired = JwtDecoder.isExpired(_token!);
+      final isExpired = JwtDecoder.isExpired(
+        _token!,
+      );
 
       if (isExpired) {
         await logout();
         return;
       }
 
-      Map<String, dynamic> decoded = JwtDecoder.decode(_token!);
+      final decoded = JwtDecoder.decode(
+        _token!,
+      );
 
       if (decoded.containsKey('exp')) {
         _expiryDate = DateTime.fromMillisecondsSinceEpoch(
           decoded['exp'] * 1000,
         );
       }
+
+      debugPrint(
+        'Session restored successfully',
+      );
     } catch (e) {
-      debugPrint('Load Session Error: $e');
+      debugPrint(
+        'Load Session Error: $e',
+      );
+
       await logout();
     }
   }
@@ -176,6 +238,13 @@ class AuthProvider extends ChangeNotifier {
       key: 'role',
       value: _role,
     );
+
+    if (_employeeImageData != null) {
+      await _storage.write(
+        key: 'employeeImageData',
+        value: _employeeImageData,
+      );
+    }
   }
 
   // =========================
@@ -187,6 +256,7 @@ class AuthProvider extends ChangeNotifier {
       _token = null;
       _username = null;
       _role = null;
+      _employeeImageData = null;
       _expiryDate = null;
       _errorMessage = null;
 
@@ -194,7 +264,9 @@ class AuthProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Logout Error: $e');
+      debugPrint(
+        'Logout Error: $e',
+      );
     }
   }
 
@@ -207,11 +279,13 @@ class AuthProvider extends ChangeNotifier {
       return true;
     }
 
-    return JwtDecoder.isExpired(_token!);
+    return JwtDecoder.isExpired(
+      _token!,
+    );
   }
 
   // =========================
-  // AUTH HEADER
+  // AUTH HEADERS
   // =========================
 
   Map<String, String> get authHeaders {

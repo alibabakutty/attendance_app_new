@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -23,6 +22,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   List<String> _siteNames = [];
   String? _selectedSite;
+  String? employeeImageData;
 
   @override
   void initState() {
@@ -393,115 +393,151 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue[800],
-        title: const Text(
-          'Mark Attendance',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(
-              right: 16,
+        appBar: AppBar(
+          backgroundColor: Colors.blue[800],
+          title: const Text(
+            'Mark Attendance',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
-            child: Center(
-              child: Text(
-                authProvider.username ?? '',
-                style: const TextStyle(
-                  color: Colors.white,
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(
+                right: 16,
+              ),
+              child: Center(
+                child: Text(
+                  authProvider.username ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(
-                16,
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    DateFormat(
-                      'EEEE, MMM d yyyy',
-                    ).format(
-                      DateTime.now(),
-                    ),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(
+                    16,
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // =========================
-                  // SITE DROPDOWN
-                  // =========================
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.grey,
-                      ),
-                      borderRadius: BorderRadius.circular(
-                        12,
-                      ),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedSite,
-                        hint: const Text(
-                          'Select Site',
+                  child: Column(
+                    children: [
+                      // EMPLOYEE IMAGE
+                      if (authProvider.employeeImageData != null &&
+                          authProvider.employeeImageData!.isNotEmpty)
+                        CircleAvatar(
+                          radius: 45,
+                          backgroundImage: MemoryImage(
+                            base64Decode(
+                              authProvider.employeeImageData!,
+                            ),
+                          ),
+                        )
+                      else
+                        const CircleAvatar(
+                          radius: 45,
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                          ),
                         ),
-                        isExpanded: true,
-                        items: _siteNames.map(
-                          (site) {
-                            return DropdownMenuItem<String>(
-                              value: site,
-                              child: Text(
-                                site,
+
+                      const SizedBox(height: 12),
+
+                      // USERNAME BELOW IMAGE (optional)
+                      Text(
+                        DateFormat(
+                          'EEEE, MMM d yyyy',
+                        ).format(
+                          DateTime.now(),
+                        ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // =========================
+                      // SITE DROPDOWN
+                      // =========================
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 0),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: Colors.grey.shade400, width: 1),
+                          borderRadius: BorderRadius.circular(
+                            8,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedSite,
+                            hint: const Text(
+                              'Select Site',
+                              style: TextStyle(
+                                fontSize: 14,
                               ),
-                            );
-                          },
-                        ).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedSite = value;
-                          });
-                        },
+                            ),
+                            isExpanded: true,
+                            isDense: true,
+                            iconSize: 20,
+                            items: _siteNames.map(
+                              (site) {
+                                return DropdownMenuItem<String>(
+                                  value: site,
+                                  child: Text(
+                                    site,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedSite = value;
+                              });
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                  _buildAttendanceCard(
-                    title: 'Office Time-In',
-                    icon: Icons.login,
-                    time: _officeTimeIn,
-                    actionType: 'officeIn',
-                  ),
+                      _buildAttendanceCard(
+                        title: 'Office Time-In',
+                        icon: Icons.login,
+                        time: _officeTimeIn,
+                        actionType: 'officeIn',
+                      ),
 
-                  _buildAttendanceCard(
-                    title: 'Office Time-Out',
-                    icon: Icons.logout,
-                    time: _officeTimeOut,
-                    actionType: 'officeOut',
+                      _buildAttendanceCard(
+                        title: 'Office Time-Out',
+                        icon: Icons.logout,
+                        time: _officeTimeOut,
+                        actionType: 'officeOut',
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-    );
+                ),
+              ));
   }
 
   // =========================
@@ -527,7 +563,10 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         child: Row(
           children: [
             CircleAvatar(
