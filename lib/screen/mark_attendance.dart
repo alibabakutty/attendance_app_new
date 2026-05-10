@@ -32,6 +32,18 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     _fetchSiteNames();
   }
 
+  String _getOverallAttendanceStatus() {
+    if (_officeTimeOut != null) {
+      return 'Completed';
+    }
+
+    if (_officeTimeIn != null) {
+      return 'Present';
+    }
+
+    return 'Absent';
+  }
+
   // =========================
   // FETCH TODAY ATTENDANCE
   // =========================
@@ -45,7 +57,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.2:8080/api/v1/attendance/today/${authProvider.username}',
+          'http://192.168.1.3:8080/api/v1/attendance/today/${authProvider.username}',
         ),
         headers: authProvider.authHeaders,
       );
@@ -95,7 +107,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.2:8080/api/v1/site-name-masters',
+          'http://192.168.1.3:8080/api/v1/site-name-masters',
         ),
         headers: authProvider.authHeaders,
       );
@@ -272,7 +284,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.post(
         Uri.parse(
-          'http://192.168.1.2:8080/api/v1/attendance/mark',
+          'http://192.168.1.3:8080/api/v1/attendance/mark',
         ),
         headers: authProvider.authHeaders,
         body: jsonEncode(body),
@@ -340,28 +352,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       default:
         return false;
     }
-  }
-
-  // =========================
-  // STATUS
-  // =========================
-
-  String _getStatusForCard(
-    String actionType,
-  ) {
-    if (_officeTimeOut != null) {
-      return 'Completed';
-    }
-
-    if (_officeTimeIn == null) {
-      return actionType == 'officeIn' ? 'Absent' : '';
-    }
-
-    if (actionType == 'officeIn' && _officeTimeIn != null) {
-      return 'Present';
-    }
-
-    return '';
   }
 
   Color _getStatusColor(
@@ -435,29 +425,66 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                   ),
                   child: Column(
                     children: [
-                      // EMPLOYEE IMAGE
-                      if (authProvider.employeeImageData != null &&
-                          authProvider.employeeImageData!.isNotEmpty)
-                        CircleAvatar(
-                          radius: 45,
-                          backgroundImage: MemoryImage(
-                            base64Decode(
-                              authProvider.employeeImageData!,
+                      // TOP RIGHT STATUS
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(
+                              _getOverallAttendanceStatus(),
+                            ).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _getOverallAttendanceStatus(),
+                            style: TextStyle(
+                              color: _getStatusColor(
+                                _getOverallAttendanceStatus(),
+                              ),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
                           ),
-                        )
-                      else
-                        const CircleAvatar(
-                          radius: 45,
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                          ),
                         ),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      // PORTRAIT EMPLOYEE IMAGE
+                      Container(
+                        width: 110,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: authProvider.employeeImageData != null &&
+                                  authProvider.employeeImageData!.isNotEmpty
+                              ? Image.memory(
+                                  base64Decode(
+                                    authProvider.employeeImageData!,
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  size: 60,
+                                  color: Colors.grey,
+                                ),
+                        ),
+                      ),
 
                       const SizedBox(height: 12),
 
-                      // USERNAME BELOW IMAGE (optional)
+                      // DATE
                       Text(
                         DateFormat(
                           'EEEE, MMM d yyyy',
@@ -471,16 +498,16 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
                       const SizedBox(height: 20),
 
-                      // =========================
                       // SITE DROPDOWN
-                      // =========================
-
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 0),
+                          horizontal: 10,
+                        ),
                         decoration: BoxDecoration(
-                          border:
-                              Border.all(color: Colors.grey.shade400, width: 1),
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(
                             8,
                           ),
@@ -550,9 +577,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     required DateTime? time,
     required String actionType,
   }) {
-    final status = _getStatusForCard(
-      actionType,
-    );
+    // final status = _getStatusForCard(
+    //   actionType,
+    // );
 
     return Card(
       margin: const EdgeInsets.symmetric(
@@ -591,33 +618,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      if (status.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(
-                              status,
-                            ).withOpacity(
-                              0.2,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              12,
-                            ),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(
-                              color: _getStatusColor(
-                                status,
-                              ),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 6),

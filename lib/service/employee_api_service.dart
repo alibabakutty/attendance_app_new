@@ -8,7 +8,7 @@ class EmployeeApiService {
 
   // Real Device
   static const String baseUrl =
-      'http://192.168.1.2:8080/api/v1/employee-masters';
+      'http://192.168.1.3:8080/api/v1/employee-masters';
 
   // CREATE
   Future<bool> createEmployee(

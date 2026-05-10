@@ -91,10 +91,15 @@ class _WidgetTreeState extends State<WidgetTree> {
   Widget _buildAppHeader() {
     return Column(
       children: [
-        const Icon(Icons.fingerprint, size: 80, color: Colors.white),
+        Image.asset(
+          'assets/images/logo.jpg',
+          width: 90,
+          height: 90,
+          fit: BoxFit.contain,
+        ),
         const SizedBox(height: 20),
         const Text(
-          'Cloud9 Attendance',
+          'Kanishkaa Attendance',
           style: TextStyle(
             fontSize: 28,
             color: Colors.white,
