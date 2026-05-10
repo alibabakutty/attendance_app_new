@@ -1,6 +1,5 @@
 import 'package:attendance_app/modals/mark_attendance_data.dart';
-import 'package:attendance_app/service/firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:attendance_app/service/attendance_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,7 +11,7 @@ class AttendanceHistory extends StatefulWidget {
 }
 
 class _AttendanceHistoryState extends State<AttendanceHistory> {
-  final FirebaseService _firebaseService = FirebaseService();
+  late AttendanceApiService _attendanceApiService;
   final _employeeNameController = TextEditingController();
   final _employeeIdController = TextEditingController();
   final _employeeMobileNumberController = TextEditingController();
@@ -37,6 +36,9 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
   @override
   void initState() {
     super.initState();
+    _attendanceApiService = AttendanceApiService(
+      baseUrl: "http://192.168.1.3:8080",
+    );
     _employeeNameController.addListener(() => setState(() {}));
     _employeeIdController.addListener(() => setState(() {}));
     _employeeMobileNumberController.addListener(() => setState(() {}));
@@ -112,6 +114,9 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
           results = await _searchBySpecificDate(_specificDate!);
         } else if (_startDate != null && _endDate != null) {
           results = await _searchByDateRange(_startDate!, _endDate!);
+        } else {
+          // If no date selected, show all records
+          results = await _attendanceApiService.getAllAttendance();
         }
       } else if (_searchType == 'name' &&
           _employeeNameController.text.isNotEmpty) {
@@ -145,84 +150,126 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
   }
 
   Future<List<MarkAttendanceData>> _searchBySpecificDate(DateTime date) async {
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    try {
+      final allRecords = await _attendanceApiService.getAllAttendance();
 
-    final snapshot = await _firebaseService.getAllMarkAttendanceData();
-    return snapshot.where((record) {
-      final recordDate = record.attendanceDate.toDate();
-      return !recordDate.isBefore(startOfDay) && !recordDate.isAfter(endOfDay);
-    }).toList();
+      // Filter records where attendanceDate matches the specific date
+      return allRecords.where((record) {
+        if (record.attendanceDate == null) return false;
+
+        // Compare only year, month, and day
+        return record.attendanceDate!.year == date.year &&
+            record.attendanceDate!.month == date.month &&
+            record.attendanceDate!.day == date.day;
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search by date: $e');
+    }
   }
 
   Future<List<MarkAttendanceData>> _searchByDateRange(
     DateTime start,
     DateTime end,
   ) async {
-    final startDate = DateTime(start.year, start.month, start.day);
-    final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    try {
+      final allRecords = await _attendanceApiService.getAllAttendance();
 
-    final snapshot = await _firebaseService.getAllMarkAttendanceData();
-    return snapshot.where((record) {
-      final recordDate = record.attendanceDate.toDate();
-      return !recordDate.isBefore(startDate) && !recordDate.isAfter(endDate);
-    }).toList();
+      // Normalize dates to start of day and end of day
+      final startDate = DateTime(start.year, start.month, start.day);
+      final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
+
+      return allRecords.where((record) {
+        if (record.attendanceDate == null) return false;
+
+        return record.attendanceDate!
+                .isAfter(startDate.subtract(const Duration(days: 1))) &&
+            record.attendanceDate!
+                .isBefore(endDate.add(const Duration(days: 1)));
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search by date range: $e');
+    }
   }
 
   Future<List<MarkAttendanceData>> _searchByEmployeeName(String name) async {
-    final snapshot = await _firebaseService.getAllMarkAttendanceData();
-    return snapshot.where((record) {
-      return record.employeeName.toLowerCase().contains(name.toLowerCase());
-    }).toList();
+    try {
+      final allRecords = await _attendanceApiService.getAllAttendance();
+      return allRecords.where((record) {
+        return record.employeeName.toLowerCase().contains(name.toLowerCase());
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search by name: $e');
+    }
   }
 
   Future<List<MarkAttendanceData>> _searchByEmployeeId(String id) async {
-    final snapshot = await _firebaseService.getAllMarkAttendanceData();
-    return snapshot.where((record) {
-      return record.employeeId.toLowerCase().contains(id.toLowerCase());
-    }).toList();
+    try {
+      final allRecords = await _attendanceApiService.getAllAttendance();
+      return allRecords.where((record) {
+        return record.employeeId.toLowerCase().contains(id.toLowerCase());
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search by ID: $e');
+    }
   }
 
   Future<List<MarkAttendanceData>> _searchByMobileNumber(String mobile) async {
-    final snapshot = await _firebaseService.getAllMarkAttendanceData();
-    return snapshot.where((record) {
-      return record.mobileNumber?.contains(mobile) ?? false;
-    }).toList();
+    try {
+      final allRecords = await _attendanceApiService.getAllAttendance();
+      return allRecords.where((record) {
+        return record.mobileNumber?.contains(mobile) ?? false;
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to search by mobile: $e');
+    }
   }
 
   Widget _buildSearchTypeSelector() {
-    return DropdownButtonFormField<String>(
-      initialValue: _searchType,
-      decoration: InputDecoration(
-        labelText: 'Search By',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withAlpha(26),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      items: const [
-        DropdownMenuItem(value: 'date', child: Text('Date')),
-        DropdownMenuItem(value: 'name', child: Text('Employee Name')),
-        DropdownMenuItem(value: 'id', child: Text('Employee ID')),
-        DropdownMenuItem(value: 'mobile', child: Text('Mobile Number')),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _searchType = value!;
-          _hasSearched = false;
-          _attendanceList.clear();
-          _errorMessage = '';
-          _employeeNameController.clear();
-          _employeeIdController.clear();
-          _employeeMobileNumberController.clear();
-          _specificDate = null;
-          _startDate = null;
-          _endDate = null;
-        });
-      },
+      child: DropdownButtonFormField<String>(
+        value: _searchType,
+        decoration: InputDecoration(
+          labelText: 'Search By',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'date', child: Text('Date')),
+          DropdownMenuItem(value: 'name', child: Text('Employee Name')),
+          DropdownMenuItem(value: 'id', child: Text('Employee ID')),
+          DropdownMenuItem(value: 'mobile', child: Text('Mobile Number')),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _searchType = value!;
+            _hasSearched = false;
+            _attendanceList.clear();
+            _errorMessage = '';
+            _employeeNameController.clear();
+            _employeeIdController.clear();
+            _employeeMobileNumberController.clear();
+            _specificDate = _searchType == 'date' ? DateTime.now() : null;
+            _startDate = null;
+            _endDate = null;
+          });
+        },
+      ),
     );
   }
 
@@ -230,53 +277,66 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: RadioListTile<String>(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Specific Date',
-                  style: TextStyle(fontSize: 14),
-                ),
-                value: 'specific',
-                groupValue: _specificDate != null ||
-                        (_startDate == null && _endDate == null)
-                    ? 'specific'
-                    : 'range',
-                onChanged: (value) {
-                  setState(() {
-                    _startDate = null;
-                    _endDate = null;
-                    if (_specificDate == null) {
-                      _specificDate = DateTime.now();
-                    }
-                  });
-                },
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Specific Date',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      value: 'specific',
+                      groupValue: _specificDate != null ||
+                              (_startDate == null && _endDate == null)
+                          ? 'specific'
+                          : 'range',
+                      onChanged: (value) {
+                        setState(() {
+                          _startDate = null;
+                          _endDate = null;
+                          if (_specificDate == null) {
+                            _specificDate = DateTime.now();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Date Range',
+                          style: TextStyle(fontSize: 14)),
+                      value: 'range',
+                      groupValue: _startDate != null || _endDate != null
+                          ? 'range'
+                          : 'specific',
+                      onChanged: (value) {
+                        setState(() {
+                          _specificDate = null;
+                          if (_startDate == null) _startDate = DateTime.now();
+                          if (_endDate == null) _endDate = DateTime.now();
+                        });
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Expanded(
-              child: RadioListTile<String>(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Date Range', style: TextStyle(fontSize: 14)),
-                value: 'range',
-                groupValue: _startDate != null || _endDate != null
-                    ? 'range'
-                    : 'specific',
-                onChanged: (value) {
-                  setState(() {
-                    _specificDate = null;
-                    if (_startDate == null) _startDate = DateTime.now();
-                    if (_endDate == null) _endDate = DateTime.now();
-                  });
-                },
-              ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              if (_specificDate != null) _buildSpecificDateSelector(),
+              if (_startDate != null && _endDate != null)
+                _buildDateRangeSelector(),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        if (_specificDate != null) _buildSpecificDateSelector(),
-        if (_startDate != null && _endDate != null) _buildDateRangeSelector(),
       ],
     );
   }
@@ -298,7 +358,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Colors.grey.shade50,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 12,
@@ -333,7 +393,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Colors.grey.shade50,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 12,
@@ -366,6 +426,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -395,7 +456,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 borderRadius: BorderRadius.circular(8),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Colors.grey.shade50,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 12,
@@ -423,6 +484,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                 _specificDate != null ? _searchAttendanceHistories : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade700,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -487,6 +549,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -517,6 +580,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -550,6 +614,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                         : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -570,7 +635,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
   }
 
   Widget _buildColumnSelector() {
-    return PopupMenuButton(
+    return PopupMenuButton<String>(
       icon: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
@@ -580,35 +645,44 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.filter_list, size: 18),
+            Icon(Icons.view_column, size: 18),
             SizedBox(width: 4),
             Text('Columns', style: TextStyle(fontSize: 12)),
           ],
         ),
       ),
+      onSelected: (value) {
+        // Handle column selection
+      },
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        const PopupMenuItem<String>(
+          value: 'header',
+          enabled: false,
           child: Text('Select Columns',
               style: TextStyle(fontWeight: FontWeight.bold)),
         ),
         ..._allAvailableColumns.map((column) {
-          return PopupMenuItem(
-            child: CheckboxListTile(
-              title: Text(column, style: const TextStyle(fontSize: 14)),
-              value: _selectedColumns.contains(column),
-              onChanged: (selected) {
-                setState(() {
-                  if (selected!) {
-                    _selectedColumns.add(column);
-                  } else {
-                    _selectedColumns.remove(column);
-                  }
-                });
-                Navigator.pop(context); // Close the menu after selection
+          return PopupMenuItem<String>(
+            value: column,
+            child: StatefulBuilder(
+              builder: (context, setStatePopup) {
+                return CheckboxListTile(
+                  title: Text(column, style: const TextStyle(fontSize: 14)),
+                  value: _selectedColumns.contains(column),
+                  onChanged: (selected) {
+                    setState(() {
+                      if (selected!) {
+                        _selectedColumns.add(column);
+                      } else {
+                        _selectedColumns.remove(column);
+                      }
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                );
               },
-              controlAffinity: ListTileControlAffinity.leading,
-              dense: true,
-              contentPadding: EdgeInsets.zero,
             ),
           );
         }).toList(),
@@ -627,12 +701,14 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
       ];
 
   List<DataColumn> _buildDataColumns() {
-    return _selectedColumns.map((column) {
+    return _selectedColumns.asMap().entries.map((entry) {
+      final index = entry.key;
+      final column = entry.value;
       return DataColumn(
         label: Text(column, style: const TextStyle(fontSize: 12)),
         tooltip: column,
         onSort: (columnIndex, ascending) {
-          _onSort(columnIndex, ascending);
+          _onSort(index, ascending);
         },
       );
     }).toList();
@@ -648,7 +724,8 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         int compareResult;
         switch (column) {
           case 'Date':
-            compareResult = a.attendanceDate.compareTo(b.attendanceDate);
+            compareResult =
+                a.attendanceDate!.compareTo(b.attendanceDate ?? DateTime.now());
             break;
           case 'Name':
             compareResult = a.employeeName.compareTo(b.employeeName);
@@ -657,17 +734,17 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             compareResult = a.employeeId.compareTo(b.employeeId);
             break;
           case 'Status':
-            compareResult = (a.status ?? '').compareTo(b.status ?? '');
+            compareResult = (a.status).compareTo(b.status);
             break;
           case 'Time In':
-            compareResult = (a.officeTimeIn ?? Timestamp(0, 0)).compareTo(
-              b.officeTimeIn ?? Timestamp(0, 0),
-            );
+            final aTime = a.officeTimeIn ?? DateTime(0);
+            final bTime = b.officeTimeIn ?? DateTime(0);
+            compareResult = aTime.compareTo(bTime);
             break;
           case 'Time Out':
-            compareResult = (a.officeTimeOut ?? Timestamp(0, 0)).compareTo(
-              b.officeTimeOut ?? Timestamp(0, 0),
-            );
+            final aTime = a.officeTimeOut ?? DateTime(0);
+            final bTime = b.officeTimeOut ?? DateTime(0);
+            compareResult = aTime.compareTo(bTime);
             break;
           case 'Mobile':
             compareResult = (a.mobileNumber ?? '').compareTo(
@@ -690,28 +767,28 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
       return DataRow(
         cells: cells,
-        color: WidgetStateProperty.resolveWith<Color>((
-          Set<WidgetState> states,
-        ) {
-          return _attendanceList.indexOf(attendance) % 2 == 0
-              ? Colors.white
-              : Colors.grey.shade50;
-        }),
+        color: WidgetStateProperty.resolveWith<Color?>(
+          (Set<WidgetState> states) {
+            return _attendanceList.indexOf(attendance) % 2 == 0
+                ? Colors.white
+                : Colors.grey.shade50;
+          },
+        ),
       );
     }).toList();
   }
 
   Widget _buildCellContent(String column, MarkAttendanceData attendance) {
-    String formatTimestamp(Timestamp? timestamp) {
-      return timestamp != null
-          ? DateFormat('hh:mm a').format(timestamp.toDate())
-          : 'N/A';
+    String formatTimestamp(DateTime? date) {
+      return date != null ? DateFormat('hh:mm a').format(date) : 'N/A';
     }
 
     switch (column) {
       case 'Date':
         return Text(
-          DateFormat('dd-MM-yyyy').format(attendance.attendanceDate.toDate()),
+          attendance.attendanceDate != null
+              ? DateFormat('dd-MM-yyyy').format(attendance.attendanceDate!)
+              : 'N/A',
           style: const TextStyle(fontSize: 12, height: 1.1),
         );
       case 'Name':
@@ -736,7 +813,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
           ),
           child: Text(
-            attendance.status?.toUpperCase() ?? 'N/A',
+            attendance.status.toUpperCase(),
             style: TextStyle(
               color: _getStatusColor(attendance.status),
               fontSize: 11,
@@ -765,8 +842,8 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
     }
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
       case 'present':
         return Colors.green;
       case 'half-day':
@@ -780,23 +857,56 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
 
   Widget _buildAttendanceList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     } else if (_errorMessage.isNotEmpty) {
       return Center(
-        child: Text(
-          _errorMessage,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.redAccent,
-            fontWeight: FontWeight.w600,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: Text(
+            _errorMessage,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.redAccent,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
       );
     } else if (_attendanceList.isEmpty && _hasSearched) {
-      return const Center(
-        child: Text(
-          'No attendance records found',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+              const SizedBox(height: 8),
+              const Text(
+                'No attendance records found',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Try adjusting your search criteria',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
         ),
       );
     } else if (_attendanceList.isEmpty) {
@@ -817,11 +927,11 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: DataTable(
               headingRowHeight: 36,
-              // ignore: deprecated_member_use
-              dataRowHeight: 32,
+              dataRowHeight: 40,
               sortColumnIndex: _sortColumnIndex,
               sortAscending: _sortAscending,
               headingRowColor: WidgetStateProperty.resolveWith<Color>(
@@ -844,27 +954,38 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
             ),
           ),
         ),
-        if (_attendanceList.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Export functionality coming soon'),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total Records: ${_attendanceList.length}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Export functionality coming soon'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.download, size: 18),
+              label: const Text(
+                'Export to Excel',
+                style: TextStyle(fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            },
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text(
-              'Export to Excel',
-              style: TextStyle(fontSize: 14),
+              ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-          ),
-        ],
+          ],
+        ),
       ],
     );
   }
@@ -877,6 +998,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         backgroundColor: Colors.orange.shade700,
         title: const Text('Attendance Report', style: TextStyle(fontSize: 16)),
         centerTitle: true,
+        elevation: 2,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

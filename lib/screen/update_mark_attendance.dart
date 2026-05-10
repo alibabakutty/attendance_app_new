@@ -1,6 +1,5 @@
 import 'package:attendance_app/modals/mark_attendance_data.dart';
-import 'package:attendance_app/service/firebase_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:attendance_app/service/attendance_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,7 +24,9 @@ class UpdateMarkAttendance extends StatefulWidget {
 }
 
 class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
-  final FirebaseService _firebaseService = FirebaseService();
+  final AttendanceApiService _attendanceApiService = AttendanceApiService(
+    baseUrl: "http://192.168.1.3:8080",
+  );
   final Map<String, Position?> _locationMap = {
     'officeIn': null,
     'officeOut': null,
@@ -43,8 +44,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   @override
   void initState() {
     super.initState();
-    _selectedDate =
-        widget.existingAttendance?.attendanceDate.toDate() ?? DateTime.now();
+    _selectedDate = widget.existingAttendance?.attendanceDate ?? DateTime.now();
     _initializeData();
   }
 
@@ -69,9 +69,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
     try {
       // First check if we have existing attendance data passed in
       if (widget.existingAttendance != null &&
-          DateFormat(
-                'yyyy-MM-dd',
-              ).format(widget.existingAttendance!.attendanceDate.toDate()) ==
+          widget.existingAttendance!.attendanceDate ==
               DateFormat('yyyy-MM-dd').format(_selectedDate)) {
         _populateDataFromExisting(widget.existingAttendance!);
         return;
@@ -79,20 +77,18 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
 
       // Fetch from Firebase using the specific date
       final attendanceData =
-          await _firebaseService.fetchAttendanceByMobileNumberWithSpecificDate(
-        widget.mobileNumberArgs!,
-        _selectedDate,
+          await _attendanceApiService.getAttendanceByMobileAndDate(
+        mobileNumber: widget.mobileNumberArgs!,
+        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
       );
 
       if (attendanceData != null && mounted) {
         _populateDataFromExisting(attendanceData);
       } else {
-        // No existing data for selected date - reset fields but keep the date
         setState(() {
           _officeTimeIn = null;
           _officeTimeOut = null;
           _isSubmitted = false;
-          _locationMap.forEach((key, value) => _locationMap[key] = null);
         });
       }
     } catch (e) {
@@ -124,33 +120,10 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
 
   void _populateDataFromExisting(MarkAttendanceData attendanceData) {
     setState(() {
-      _officeTimeIn = attendanceData.officeTimeIn?.toDate();
-      _officeTimeOut = attendanceData.officeTimeOut?.toDate();
+      _officeTimeIn = attendanceData.officeTimeIn;
+      _officeTimeOut = attendanceData.officeTimeOut;
       _isSubmitted = _officeTimeOut != null;
-
-      _updateLocationFromData('officeIn', attendanceData.officeTimeInLocation);
-      _updateLocationFromData(
-        'officeOut',
-        attendanceData.officeTimeOutLocation,
-      );
     });
-  }
-
-  void _updateLocationFromData(String key, GeoPoint? location) {
-    if (location != null && location.latitude != 0) {
-      _locationMap[key] = Position(
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
-    }
   }
 
   Future<void> _showTimeUpdateDialog(String actionType) async {
@@ -180,7 +153,7 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         }
       });
 
-      await _saveAttendanceToFirestore();
+      await _saveAttendanceToApi();
     }
   }
 
@@ -253,10 +226,10 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       }
     });
 
-    await _saveAttendanceToFirestore();
+    await _saveAttendanceToApi();
   }
 
-  Future<void> _saveAttendanceToFirestore() async {
+  Future<void> _saveAttendanceToApi() async {
     try {
       if (_selectedDate.isAfter(DateTime.now())) {
         if (mounted) {
@@ -271,42 +244,23 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         employeeId: widget.employeeId,
         employeeName: widget.employeeName,
         mobileNumber: widget.mobileNumberArgs ?? '',
-        attendanceDate: Timestamp.fromDate(_selectedDate),
-        officeTimeIn:
-            _officeTimeIn != null ? Timestamp.fromDate(_officeTimeIn!) : null,
-        officeTimeInLocation: _locationMap['officeIn'] != null
-            ? GeoPoint(
-                _locationMap['officeIn']!.latitude,
-                _locationMap['officeIn']!.longitude,
-              )
-            : null,
-        officeTimeOut:
-            _officeTimeOut != null ? Timestamp.fromDate(_officeTimeOut!) : null,
-        officeTimeOutLocation: _locationMap['officeOut'] != null
-            ? GeoPoint(
-                _locationMap['officeOut']!.latitude,
-                _locationMap['officeOut']!.longitude,
-              )
-            : null,
+        attendanceDate: _selectedDate,
+        officeTimeIn: _officeTimeIn,
+        officeTimeOut: _officeTimeOut,
         status: status,
       );
 
       // Use the new function that includes date filtering
-      final success = await _firebaseService
-          .updateMarkAttendanceDataByMobileNumberWithSpecificDate(
-        widget.mobileNumberArgs!,
-        _selectedDate,
-        attendanceData.toFirestore(),
+      final updatedAttendance =
+          await _attendanceApiService.updateAttendanceByMobileAndDate(
+        mobileNumber: widget.mobileNumberArgs!,
+        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
+        requestBody: attendanceData.toJson(),
       );
 
-      if (success) {
+      if (updatedAttendance.employeeId.isNotEmpty) {
         if (mounted) {
           _showSuccessSnackBar('Attendance saved successfully');
-          // setState(() => _isEditing = true);
-        }
-      } else {
-        if (mounted) {
-          _showErrorSnackBar('Failed to save attendance');
         }
       }
     } catch (e) {
@@ -407,11 +361,13 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
         employeeId: widget.employeeId,
         employeeName: widget.employeeName,
         mobileNumber: widget.mobileNumberArgs ?? '',
-        attendanceDate: Timestamp.fromDate(_selectedDate),
+        attendanceDate: _selectedDate,
         status: 'absent', // Default status
       );
 
-      await _firebaseService.addNewMarkAttendanceData(attendanceData);
+      await _attendanceApiService.createAttendance(
+        requestBody: attendanceData.toJson(),
+      );
       if (mounted) {
         _showSuccessSnackBar('New attendance record created');
         await _fetchAttendanceForSelectedDate(); // Refresh the data

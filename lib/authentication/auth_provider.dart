@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -21,8 +20,10 @@ class AuthProvider extends ChangeNotifier {
   final Completer<void> _initializationCompleter = Completer<void>();
 
   String? _token;
+  String? _employeeId;
   String? _username;
   String? _role;
+  String? _mobileNumber;
   String? _employeeImageData;
   String? _errorMessage;
 
@@ -49,7 +50,11 @@ class AuthProvider extends ChangeNotifier {
 
   String? get token => _token;
 
+  String? get employeeId => _employeeId;
+
   String? get username => _username;
+
+  String? get mobileNumber => _mobileNumber;
 
   String? get role => _role;
 
@@ -114,6 +119,8 @@ class AuthProvider extends ChangeNotifier {
       _token = response['token'];
       _username = response['username'];
       _role = response['role'];
+      _employeeId = response['employeeId'];
+      _mobileNumber = response['mobileNumber'];
 
       // FIXED: use correct key from backend
       _employeeImageData = response['userImageData']?.replaceFirst(
@@ -184,6 +191,14 @@ class AuthProvider extends ChangeNotifier {
         key: 'employeeImageData',
       );
 
+      _employeeId = await _storage.read(
+        key: 'employeeId',
+      );
+
+      _mobileNumber = await _storage.read(
+        key: 'mobileNumber',
+      );
+
       if (_token == null) {
         return;
       }
@@ -245,6 +260,16 @@ class AuthProvider extends ChangeNotifier {
         value: _employeeImageData,
       );
     }
+
+    await _storage.write(
+      key: 'employeeId',
+      value: _employeeId,
+    );
+
+    await _storage.write(
+      key: 'mobileNumber',
+      value: _mobileNumber,
+    );
   }
 
   // =========================
@@ -257,6 +282,8 @@ class AuthProvider extends ChangeNotifier {
       _username = null;
       _role = null;
       _employeeImageData = null;
+      _employeeId = null;
+      _mobileNumber = null;
       _expiryDate = null;
       _errorMessage = null;
 

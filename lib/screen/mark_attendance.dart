@@ -18,7 +18,8 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   bool _isSubmitted = false;
   bool _isLoading = true;
-  bool _isSaving = false;
+  bool _isSavingIn = false; // Separate loading for Time-In
+  bool _isSavingOut = false; // Separate loading for Time-Out
 
   List<String> _siteNames = [];
   String? _selectedSite;
@@ -27,7 +28,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   @override
   void initState() {
     super.initState();
-
     _fetchTodayAttendance();
     _fetchSiteNames();
   }
@@ -36,11 +36,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     if (_officeTimeOut != null) {
       return 'Completed';
     }
-
     if (_officeTimeIn != null) {
       return 'Present';
     }
-
     return 'Absent';
   }
 
@@ -57,7 +55,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.3:8080/api/v1/attendance/today/${authProvider.username}',
+          'http://192.168.1.3:8080/api/v1/attendance-masters/today/${authProvider.username}',
         ),
         headers: authProvider.authHeaders,
       );
@@ -67,26 +65,19 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
         setState(() {
           _officeTimeIn = data['officeTimeIn'] != null
-              ? DateTime.parse(
-                  data['officeTimeIn'],
-                )
+              ? DateTime.parse(data['officeTimeIn'])
               : null;
 
           _officeTimeOut = data['officeTimeOut'] != null
-              ? DateTime.parse(
-                  data['officeTimeOut'],
-                )
+              ? DateTime.parse(data['officeTimeOut'])
               : null;
 
           _selectedSite = data['siteName'];
-
           _isSubmitted = _officeTimeOut != null;
         });
       }
     } catch (e) {
-      debugPrint(
-        'Fetch Attendance Error: $e',
-      );
+      debugPrint('Fetch Attendance Error: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -116,17 +107,12 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         final List data = jsonDecode(response.body);
 
         setState(() {
-          _siteNames = data
-              .map<String>(
-                (e) => e['siteName'].toString(),
-              )
-              .toList();
+          _siteNames =
+              data.map<String>((e) => e['siteName'].toString()).toList();
         });
       }
     } catch (e) {
-      debugPrint(
-        'Site Fetch Error: $e',
-      );
+      debugPrint('Site Fetch Error: $e');
     }
   }
 
@@ -134,159 +120,72 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   // TIME VALIDATION
   // =========================
 
-  bool _isWithinOfficeTimeInRange(
-    DateTime time,
-  ) {
+  bool _isWithinOfficeTimeInRange(DateTime time) {
     final authProvider = Provider.of<AuthProvider>(
       context,
       listen: false,
     );
 
-    final start = DateTime(
-      time.year,
-      time.month,
-      time.day,
-      9,
-      0,
-    );
-
+    final start = DateTime(time.year, time.month, time.day, 9, 0);
     final end = authProvider.isAdmin
-        ? DateTime(
-            time.year,
-            time.month,
-            time.day,
-            10,
-            30,
-          )
-        : DateTime(
-            time.year,
-            time.month,
-            time.day,
-            9,
-            45,
-          );
+        ? DateTime(time.year, time.month, time.day, 10, 30)
+        : DateTime(time.year, time.month, time.day, 9, 45);
 
-    return time.isAfter(
-          start.subtract(
-            const Duration(
-              seconds: 1,
-            ),
-          ),
-        ) &&
-        time.isBefore(
-          end.add(
-            const Duration(
-              seconds: 1,
-            ),
-          ),
-        );
+    return time.isAfter(start.subtract(const Duration(seconds: 1))) &&
+        time.isBefore(end.add(const Duration(seconds: 1)));
   }
 
-  bool _isWithinOfficeTimeOutRange(
-    DateTime time,
-  ) {
-    final start = DateTime(
-      time.year,
-      time.month,
-      time.day,
-      18,
-      30,
-    );
+  bool _isWithinOfficeTimeOutRange(DateTime time) {
+    final start = DateTime(time.year, time.month, time.day, 18, 30);
+    final end = DateTime(time.year, time.month, time.day, 19, 15);
 
-    final end = DateTime(
-      time.year,
-      time.month,
-      time.day,
-      19,
-      15,
-    );
-
-    return time.isAfter(
-          start.subtract(
-            const Duration(
-              seconds: 1,
-            ),
-          ),
-        ) &&
-        time.isBefore(
-          end.add(
-            const Duration(
-              seconds: 1,
-            ),
-          ),
-        );
+    return time.isAfter(start.subtract(const Duration(seconds: 1))) &&
+        time.isBefore(end.add(const Duration(seconds: 1)));
   }
 
   // =========================
   // MARK ATTENDANCE
   // =========================
 
-  Future<void> _handleAction(
-    String actionType,
-  ) async {
-    if (_isSaving) return;
+  Future<void> _handleAction(String actionType) async {
+    // Check specific loading state
+    if (actionType == 'officeIn' && _isSavingIn) return;
+    if (actionType == 'officeOut' && _isSavingOut) return;
 
-    final authProvider = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    );
-
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final now = DateTime.now();
 
+    // Validation Logic
     if (actionType == 'officeIn' && _selectedSite == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.red,
-          content: Text(
-            'Please select site',
-          ),
-        ),
-      );
-
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Please select site')));
       return;
     }
 
-    bool isValid = true;
-
-    if (actionType == 'officeIn') {
-      isValid = _isWithinOfficeTimeInRange(
-        now,
-      );
-    }
-
-    if (actionType == 'officeOut') {
-      isValid = _isWithinOfficeTimeOutRange(
-        now,
-      );
-    }
-
-    if (!isValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.orange,
-          content: Text(
-            'Outside allowed time range',
-          ),
-        ),
-      );
-    }
-
     try {
+      // Set specific loading state
       setState(() {
-        _isSaving = true;
+        if (actionType == 'officeIn') {
+          _isSavingIn = true;
+        } else {
+          _isSavingOut = true;
+        }
       });
 
       final body = {
-        "employeeName": authProvider.username,
+        "employeeId": authProvider.employeeId ?? "1001",
+        "employeeName": authProvider.username ?? "Perumal",
+        "mobileNumber": authProvider.mobileNumber ?? "9940013931",
         "siteName": _selectedSite,
-        "actionType": actionType,
+        "status": actionType,
       };
 
       final response = await http.post(
-        Uri.parse(
-          'http://192.168.1.3:8080/api/v1/attendance/mark',
-        ),
-        headers: authProvider.authHeaders,
+        Uri.parse('http://192.168.1.3:8080/api/v1/attendance-masters/mark'),
+        headers: {
+          ...authProvider.authHeaders,
+          'Content-Type': 'application/json',
+        },
         body: jsonEncode(body),
       );
 
@@ -295,7 +194,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           if (actionType == 'officeIn') {
             _officeTimeIn = now;
           }
-
           if (actionType == 'officeOut') {
             _officeTimeOut = now;
             _isSubmitted = true;
@@ -305,28 +203,29 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green,
-            content: Text(
-              '$actionType marked successfully',
-            ),
+            content: Text('$actionType marked successfully'),
           ),
         );
       } else {
-        throw Exception(
-          response.body,
-        );
+        print("Server Error: ${response.body}");
+        throw Exception('Status Code: ${response.statusCode}');
       }
     } catch (e) {
+      print("Connection Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
-          content: Text(
-            'Error: $e',
-          ),
+          content: Text('Error: $e'),
         ),
       );
     } finally {
+      // Clear specific loading state
       setState(() {
-        _isSaving = false;
+        if (actionType == 'officeIn') {
+          _isSavingIn = false;
+        } else {
+          _isSavingOut = false;
+        }
       });
     }
   }
@@ -335,9 +234,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   // BUTTON ENABLE
   // =========================
 
-  bool _shouldEnableButton(
-    String actionType,
-  ) {
+  bool _shouldEnableButton(String actionType) {
     if (_isSubmitted) {
       return false;
     }
@@ -345,31 +242,50 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     switch (actionType) {
       case 'officeIn':
         return _officeTimeIn == null;
-
       case 'officeOut':
         return _officeTimeIn != null && _officeTimeOut == null;
-
       default:
         return false;
     }
   }
 
-  Color _getStatusColor(
-    String status,
-  ) {
+  Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'present':
         return Colors.green;
-
       case 'completed':
         return Colors.blue;
-
       case 'absent':
         return Colors.red;
-
       default:
         return Colors.grey;
     }
+  }
+
+  void _onLogout(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: const Text('Logout'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              authProvider.logout();
+              Navigator.of(context).pushReplacementNamed('/employeeLogin');
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   // =========================
@@ -378,57 +294,89 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(
-      context,
-    );
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.blue[800],
-          title: const Text(
-            'Mark Attendance',
-            style: TextStyle(
+      backgroundColor: const Color(0xFFdcf2fb),
+      appBar: AppBar(
+        backgroundColor: Colors.blue[800],
+        centerTitle: true,
+        title: const Text(
+          'Mark Attendance',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              _onLogout(context);
+            },
+            icon: const Icon(
+              Icons.logout,
               color: Colors.white,
-              fontWeight: FontWeight.bold,
             ),
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(
-                right: 16,
-              ),
-              child: Center(
-                child: Text(
-                  authProvider.username ?? '',
-                  style: const TextStyle(
-                    color: Colors.white,
-                  ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFE3F2FD), // Light Blue
+                    Color(0xFFBBDEFB), // Soft Blue
+                    Color(0xFF90CAF9), // Medium Light Blue
+                  ],
+                  stops: [0.0, 0.5, 1.0],
                 ),
+                border: Border.all(
+                  color: Colors.blueGrey.shade300,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : Container(
-                margin: const EdgeInsets.all(12),
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(
-                    16,
-                  ),
-                  child: Column(
-                    children: [
-                      // TOP RIGHT STATUS
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: Container(
+                child: Column(
+                  children: [
+                    // HEADER: EMPTY | USERNAME | STATUS
+                    Row(
+                      children: [
+                        // LEFT EMPTY SPACE
+                        const SizedBox(width: 90),
+                        // CENTER USERNAME
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              authProvider.username ?? '',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                                letterSpacing: 0.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        // RIGHT STATUS CARD
+                        Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,
@@ -450,121 +398,116 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                             ),
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
-                      const SizedBox(height: 15),
-
-                      // PORTRAIT EMPLOYEE IMAGE
-                      Container(
-                        width: 110,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+                    // PORTRAIT EMPLOYEE IMAGE
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.55,
+                      height: MediaQuery.of(context).size.height * 0.32,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: authProvider.employeeImageData != null &&
-                                  authProvider.employeeImageData!.isNotEmpty
-                              ? Image.memory(
-                                  base64Decode(
-                                    authProvider.employeeImageData!,
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: authProvider.employeeImageData != null &&
+                                authProvider.employeeImageData!.isNotEmpty
+                            ? Image.memory(
+                                base64Decode(authProvider.employeeImageData!),
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                color: Colors.grey.shade100,
+                                child: const Icon(
                                   Icons.person,
-                                  size: 60,
+                                  size: 100,
                                   color: Colors.grey,
                                 ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // DATE
-                      Text(
-                        DateFormat(
-                          'EEEE, MMM d yyyy',
-                        ).format(
-                          DateTime.now(),
-                        ),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // SITE DROPDOWN
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 1,
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            8,
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedSite,
-                            hint: const Text(
-                              'Select Site',
-                              style: TextStyle(
-                                fontSize: 14,
                               ),
-                            ),
-                            isExpanded: true,
-                            isDense: true,
-                            iconSize: 20,
-                            items: _siteNames.map(
-                              (site) {
-                                return DropdownMenuItem<String>(
-                                  value: site,
-                                  child: Text(
-                                    site,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedSite = value;
-                              });
-                            },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // DATE
+                    Text(
+                      DateFormat('EEEE, MMM d yyyy').format(DateTime.now()),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // SITE DROPDOWN
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.grey.shade400,
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedSite,
+                          hint: const Text(
+                            'Select Site',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          isExpanded: true,
+                          isDense: true,
+                          iconSize: 20,
+                          items: _siteNames.map((site) {
+                            return DropdownMenuItem<String>(
+                              value: site,
+                              child: Text(
+                                site,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedSite = value;
+                            });
+                          },
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 20),
 
-                      const SizedBox(height: 20),
-
-                      _buildAttendanceCard(
-                        title: 'Office Time-In',
-                        icon: Icons.login,
-                        time: _officeTimeIn,
-                        actionType: 'officeIn',
-                      ),
-
-                      _buildAttendanceCard(
-                        title: 'Office Time-Out',
-                        icon: Icons.logout,
-                        time: _officeTimeOut,
-                        actionType: 'officeOut',
-                      ),
-                    ],
-                  ),
+                    _buildAttendanceCard(
+                      title: 'Office Time-In',
+                      icon: Icons.login,
+                      time: _officeTimeIn,
+                      actionType: 'officeIn',
+                    ),
+                    const SizedBox(height: 10),
+                    _buildAttendanceCard(
+                      title: 'Office Time-Out',
+                      icon: Icons.logout,
+                      time: _officeTimeOut,
+                      actionType: 'officeOut',
+                    ),
+                  ],
                 ),
-              ));
+              ),
+            ),
+    );
   }
 
   // =========================
@@ -577,98 +520,95 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     required DateTime? time,
     required String actionType,
   }) {
-    // final status = _getStatusForCard(
-    //   actionType,
-    // );
+    // Determine which loading state to use
+    bool isLoading = actionType == 'officeIn' ? _isSavingIn : _isSavingOut;
+
+    // Check if the button should be shown or not
+    bool showButton = _shouldEnableButton(actionType);
 
     return Card(
-      margin: const EdgeInsets.symmetric(
-        vertical: 10,
-      ),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 26,
+              radius: 28,
               backgroundColor: Colors.blue.shade50,
-              child: Icon(
-                icon,
-                color: Colors.blue.shade800,
-              ),
+              child: Icon(icon, color: Colors.blue.shade800, size: 28),
             ),
             const SizedBox(width: 16),
+            // Title column
             Expanded(
+              flex: 2,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
                   Text(
-                    time != null
-                        ? DateFormat(
-                            'hh:mm a',
-                          ).format(
-                            time,
-                          )
-                        : 'Not marked yet',
-                    style: TextStyle(
-                      color: time != null ? Colors.green : Colors.grey,
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ],
               ),
             ),
-            ElevatedButton(
-              onPressed: _shouldEnableButton(
-                actionType,
-              )
-                  ? () async {
-                      if (actionType == 'officeOut') {
-                        await _confirmOfficeOut();
-                      } else {
-                        await _handleAction(
-                          actionType,
-                        );
-                      }
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[800],
+            // Time text - right aligned
+            Expanded(
+              flex: 2,
+              child: Text(
+                time != null
+                    ? DateFormat('hh:mm a').format(time)
+                    : 'Not marked yet',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: time != null ? Colors.black : Colors.grey,
+                ),
               ),
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Mark',
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
             ),
+            const SizedBox(width: 12),
+            // Button - Only show if button should be enabled
+            if (showButton)
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        if (actionType == 'officeOut') {
+                          await _confirmOfficeOut();
+                        } else {
+                          await _handleAction(actionType);
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[800],
+                  minimumSize: const Size(70, 40),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Mark',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            // If button is not shown, add an empty SizedBox to maintain spacing
+            if (!showButton) const SizedBox(width: 70),
           ],
         ),
       ),
@@ -683,28 +623,18 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
-          'Confirm',
-        ),
-        content: const Text(
-          'Complete attendance for today?',
-        ),
+        title: const Text('Confirm'),
+        content: const Text('Complete attendance for today?'),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(
-                context,
-                false,
-              );
+              Navigator.pop(context, false);
             },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(
-                context,
-                true,
-              );
+              Navigator.pop(context, true);
             },
             child: const Text('Confirm'),
           ),
@@ -713,9 +643,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     );
 
     if (confirm == true) {
-      await _handleAction(
-        'officeOut',
-      );
+      await _handleAction('officeOut');
     }
   }
 }

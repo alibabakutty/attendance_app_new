@@ -1,57 +1,51 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class MarkAttendanceData {
   final String employeeId;
   final String employeeName;
   final String? mobileNumber;
-  final Timestamp attendanceDate;
+  final DateTime? attendanceDate;
   final String? siteName;
-  final Timestamp? officeTimeIn;
-  final GeoPoint? officeTimeInLocation;
-  final Timestamp? officeTimeOut;
-  final GeoPoint? officeTimeOutLocation;
-  final String? status;
+  final DateTime? officeTimeIn;
+  final DateTime? officeTimeOut;
+  final String status;
 
   MarkAttendanceData({
     required this.employeeId,
     required this.employeeName,
-    required this.mobileNumber,
-    required this.attendanceDate,
+    this.mobileNumber,
+    this.attendanceDate,
     this.siteName,
     this.officeTimeIn,
-    this.officeTimeInLocation,
     this.officeTimeOut,
-    this.officeTimeOutLocation,
-    this.status,
+    required this.status,
   });
-  // Convert data from Firestore to MarkAttendanceData object
-  factory MarkAttendanceData.fromFirestore(Map<String, dynamic> data) {
+
+  factory MarkAttendanceData.fromJson(Map<String, dynamic> json) {
     return MarkAttendanceData(
-      employeeId: data['employee_id'] ?? '',
-      employeeName: data['employee_name'] ?? '',
-      mobileNumber: data['mobile_number'] ?? '',
-      attendanceDate: data['attendance_date'] ?? Timestamp.now(),
-      siteName: data['site_name'] ?? '',
-      officeTimeIn: data['office_time_in'] ?? null,
-      officeTimeInLocation: data['office_time_in_location'] ?? GeoPoint(0, 0),
-      officeTimeOut: data['office_time_out'] ?? null,
-      officeTimeOutLocation: data['office_time_out_location'] ?? GeoPoint(0, 0),
-      status: data['status'] ?? 'absent',
+      employeeId: json['employeeId'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      mobileNumber: json['mobileNumber'],
+      attendanceDate: json['attendanceDate'] != null
+          ? DateTime.parse(json['attendanceDate'])
+          : null,
+      siteName: json['siteName'],
+      officeTimeIn: json['officeTimeIn'] != null
+          ? DateTime.parse(json['officeTimeIn'])
+          : null,
+      officeTimeOut: json['officeTimeOut'] != null
+          ? DateTime.parse(json['officeTimeOut'])
+          : null,
+      status: json['status'] ?? 'ABSENT',
     );
   }
-  // Convert MarkAttendanceData object to Firestore data
-  Map<String, dynamic> toFirestore() {
+
+  Map<String, dynamic> toJson() {
     return {
-      'employee_id': employeeId,
-      'employee_name': employeeName,
-      'mobile_number': mobileNumber,
-      'attendance_date': attendanceDate,
-      'site_name': siteName,
-      'office_time_in': officeTimeIn,
-      'office_time_in_location': officeTimeInLocation,
-      'office_time_out': officeTimeOut,
-      'office_time_out_location': officeTimeOutLocation,
-      'status': status ?? 'absent',
+      "employeeId": employeeId,
+      "employeeName": employeeName,
+      "mobileNumber": mobileNumber,
+      "attendanceDate": attendanceDate?.toIso8601String().split('T')[0],
+      "siteName": siteName,
+      "status": status,
     };
   }
 }

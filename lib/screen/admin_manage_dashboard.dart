@@ -2,8 +2,8 @@ import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/modals/employee_master_data.dart';
 import 'package:attendance_app/modals/mark_attendance_data.dart';
 import 'package:attendance_app/screen/update_mark_attendance.dart';
+import 'package:attendance_app/service/attendance_api_service.dart';
 import 'package:attendance_app/service/employee_api_service.dart';
-import 'package:attendance_app/service/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,7 +16,9 @@ class AdminManageDashboard extends StatefulWidget {
 
 class _AdminManageDashboardState extends State<AdminManageDashboard> {
   final EmployeeApiService _employeeApiService = EmployeeApiService();
-  final FirebaseService _firebaseService = FirebaseService();
+  final AttendanceApiService _attendanceApiService = AttendanceApiService(
+    baseUrl: "http://192.168.1.3:8080",
+  );
   List<EmployeeMasterData> _employees = [];
   bool _isLoading = true;
 
@@ -53,15 +55,18 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
     }
   }
 
+  String _formatDate(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
   Future<MarkAttendanceData?> _fetchEmployeeAttendance(
     String mobileNumber,
     DateTime date,
   ) async {
     try {
-      return await _firebaseService
-          .fetchAttendanceByMobileNumberWithSpecificDate(
-        mobileNumber,
-        date,
+      return await _attendanceApiService.getAttendanceByMobileAndDate(
+        mobileNumber: mobileNumber,
+        date: _formatDate(date),
       );
     } catch (e) {
       if (!mounted) return null;
