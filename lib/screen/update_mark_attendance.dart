@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class UpdateMarkAttendance extends StatefulWidget {
   const UpdateMarkAttendance({
@@ -25,7 +26,7 @@ class UpdateMarkAttendance extends StatefulWidget {
 
 class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
   final AttendanceApiService _attendanceApiService = AttendanceApiService(
-    baseUrl: "http://192.168.1.3:8080",
+    baseUrl: dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080'),
   );
   final Map<String, Position?> _locationMap = {
     'officeIn': null,

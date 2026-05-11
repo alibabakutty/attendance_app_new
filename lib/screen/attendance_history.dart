@@ -2,6 +2,7 @@ import 'package:attendance_app/modals/mark_attendance_data.dart';
 import 'package:attendance_app/service/attendance_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AttendanceHistory extends StatefulWidget {
   const AttendanceHistory({super.key});
@@ -37,7 +38,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
   void initState() {
     super.initState();
     _attendanceApiService = AttendanceApiService(
-      baseUrl: "http://192.168.1.3:8080",
+      baseUrl: dotenv.get('API_BASE_URL', fallback: "http://192.168.1.3:8080"),
     );
     _employeeNameController.addListener(() => setState(() {}));
     _employeeIdController.addListener(() => setState(() {}));

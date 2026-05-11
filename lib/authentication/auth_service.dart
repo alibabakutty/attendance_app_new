@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
-  static const String baseUrl = "http://192.168.1.3:8080";
+  static final String baseUrl =
+      dotenv.get('API_BASE_URL', fallback: "http://192.168.1.3:8080");
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 

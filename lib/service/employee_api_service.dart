@@ -1,14 +1,21 @@
 import 'package:attendance_app/modals/employee_master_data.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EmployeeApiService {
   // Emulator
   // static const String baseUrl = 'http://10.0.2.2:8080/api/v1/employee-masters';
 
   // Real Device
-  static const String baseUrl =
-      'http://192.168.1.3:8080/api/v1/employee-masters';
+  String get _url {
+    final base =
+        dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080');
+    return '$base/api/v1/employee-masters';
+  }
+
+  // static const String baseUrl =
+  //     'http://192.168.1.3:8080/api/v1/employee-masters';
 
   // CREATE
   Future<bool> createEmployee(
@@ -19,7 +26,7 @@ class EmployeeApiService {
       final requestBody = jsonEncode(employee.toJson());
 
       print("===== REQUEST URL =====");
-      print(baseUrl);
+      print(_url);
 
       print("===== TOKEN =====");
       print(token);
@@ -28,7 +35,7 @@ class EmployeeApiService {
       print(requestBody);
 
       final response = await http.post(
-        Uri.parse(baseUrl),
+        Uri.parse(_url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -54,7 +61,7 @@ class EmployeeApiService {
   Future<List<EmployeeMasterData>> getAllEmployees() async {
     try {
       final response = await http.get(
-        Uri.parse(baseUrl),
+        Uri.parse(_url),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -86,7 +93,7 @@ class EmployeeApiService {
       String mobileNumber) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/mobile/$mobileNumber'),
+        Uri.parse('$_url/mobile/$mobileNumber'),
       );
 
       if (response.statusCode == 200) {
@@ -108,7 +115,7 @@ class EmployeeApiService {
       String mobileNumber, EmployeeMasterData employee) async {
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/mobile/$mobileNumber'),
+        Uri.parse('$_url/mobile/$mobileNumber'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -127,7 +134,7 @@ class EmployeeApiService {
   Future<bool> deleteEmployee(String employeeId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/$employeeId'),
+        Uri.parse('$_url/$employeeId'),
       );
 
       return response.statusCode == 200;

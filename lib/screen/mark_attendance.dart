@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MarkAttendance extends StatefulWidget {
   const MarkAttendance({super.key});
@@ -13,6 +14,8 @@ class MarkAttendance extends StatefulWidget {
 }
 
 class _MarkAttendanceState extends State<MarkAttendance> {
+  final String baseUrl =
+      dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080');
   DateTime? _officeTimeIn;
   DateTime? _officeTimeOut;
 
@@ -33,12 +36,21 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   }
 
   String _getOverallAttendanceStatus() {
-    if (_officeTimeOut != null) {
-      return 'Completed';
+    // Initial state
+    if (_officeTimeIn == null && _officeTimeOut == null) {
+      return 'Absent';
     }
-    if (_officeTimeIn != null) {
+
+    // After Office Time-In only
+    if (_officeTimeIn != null && _officeTimeOut == null) {
+      return 'Half-Day';
+    }
+
+    // After Office Time-Out
+    if (_officeTimeIn != null && _officeTimeOut != null) {
       return 'Present';
     }
+
     return 'Absent';
   }
 
@@ -55,7 +67,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.3:8080/api/v1/attendance-masters/today/${authProvider.username}',
+          '$baseUrl/api/v1/attendance-masters/today/${authProvider.username}',
         ),
         headers: authProvider.authHeaders,
       );
@@ -98,7 +110,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.3:8080/api/v1/site-name-masters',
+          '$baseUrl/api/v1/site-name-masters',
         ),
         headers: authProvider.authHeaders,
       );
@@ -181,7 +193,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       };
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.3:8080/api/v1/attendance-masters/mark'),
+        Uri.parse('$baseUrl/api/v1/attendance-masters/mark'),
         headers: {
           ...authProvider.authHeaders,
           'Content-Type': 'application/json',
@@ -520,10 +532,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     required DateTime? time,
     required String actionType,
   }) {
-    // Determine which loading state to use
     bool isLoading = actionType == 'officeIn' ? _isSavingIn : _isSavingOut;
-
-    // Check if the button should be shown or not
     bool showButton = _shouldEnableButton(actionType);
 
     return Card(
@@ -537,45 +546,52 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         child: Row(
           children: [
             CircleAvatar(
-              radius: 28,
+              radius: 26,
               backgroundColor: Colors.blue.shade50,
-              child: Icon(icon, color: Colors.blue.shade800, size: 28),
-            ),
-            const SizedBox(width: 16),
-            // Title column
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+              child: Icon(
+                icon,
+                color: Colors.blue.shade800,
+                size: 26,
               ),
             ),
-            // Time text - right aligned
+
+            const SizedBox(width: 12),
+
+            /// Title
+            Flexible(
+              flex: 3,
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            /// Time
             Expanded(
-              flex: 2,
+              flex: showButton ? 2 : 3,
               child: Text(
                 time != null
                     ? DateFormat('hh:mm a').format(time)
                     : 'Not marked yet',
                 textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: time != null ? Colors.black : Colors.grey,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            // Button - Only show if button should be enabled
-            if (showButton)
+
+            /// Mark Button
+            if (showButton) ...[
+              const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: isLoading
                     ? null
@@ -607,8 +623,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                         ),
                       ),
               ),
-            // If button is not shown, add an empty SizedBox to maintain spacing
-            if (!showButton) const SizedBox(width: 70),
+            ],
           ],
         ),
       ),
