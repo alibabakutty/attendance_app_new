@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:attendance_app/modals/employee_master_data.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -57,6 +59,46 @@ class EmployeeApiService {
     }
   }
 
+  Future<bool> bulkUploadEmployees(File excelFile, String token) async {
+    try {
+      final uri = Uri.parse('$_url/bulk-upload');
+
+      final request = http.MultipartRequest('POST', uri);
+
+      // Authorization header
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Attach excel file
+      request.files
+          .add(await http.MultipartFile.fromPath('file', excelFile.path));
+
+      print("===== BULK UPLOAD URL =====");
+      print(uri);
+
+      print("===== FILE PATH =====");
+      print(excelFile.path);
+
+      final streamedResponse = await request.send();
+
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      );
+
+      print("===== RESPONSE STATUS =====");
+      print(response.statusCode);
+
+      print("===== RESPONSE BODY =====");
+      print(response.body);
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("===== BULK UPLOAD ERROR =====");
+      print(e);
+
+      return false;
+    }
+  }
+
   // GET ALL EMPLOYEES
   Future<List<EmployeeMasterData>> getAllEmployees() async {
     try {
@@ -110,22 +152,33 @@ class EmployeeApiService {
     }
   }
 
-  // UPDATE
   Future<bool> updateEmployee(
-      String mobileNumber, EmployeeMasterData employee) async {
+    String mobileNumber,
+    EmployeeMasterData employee,
+  ) async {
     try {
+      final jsonBody = jsonEncode(employee.toJson());
+
+      print("===== UPDATE REQUEST BODY =====");
+      print(jsonBody);
+
       final response = await http.put(
         Uri.parse('$_url/mobile/$mobileNumber'),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(employee.toJson()),
+        body: jsonBody,
       );
+
+      print("===== UPDATE RESPONSE STATUS =====");
+      print(response.statusCode);
+
+      print("===== UPDATE RESPONSE BODY =====");
+      print(response.body);
 
       return response.statusCode == 200;
     } catch (e) {
-      print(e);
-
+      print("UPDATE ERROR: $e");
       return false;
     }
   }

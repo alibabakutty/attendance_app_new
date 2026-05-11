@@ -3,6 +3,10 @@ import 'package:attendance_app/screen/employee_master.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:attendance_app/service/employee_api_service.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:attendance_app/authentication/auth_provider.dart';
 
 class EmployeeProfiles extends StatefulWidget {
   const EmployeeProfiles({super.key});
@@ -41,6 +45,68 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
         SnackBar(
           content: Text(
             'Failed to load employees: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _uploadExcel() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+
+      if (result == null) return;
+
+      final file = File(result.files.single.path!);
+
+      final authProvider = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Uploading employees...'),
+        ),
+      );
+
+      final success = await _employeeApiService.bulkUploadEmployees(
+        file,
+        authProvider.token!,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.green,
+            content: Text(
+              'Bulk employee upload successful',
+            ),
+          ),
+        );
+
+        _fetchEmployees();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.red,
+            content: Text(
+              'Bulk upload failed',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            'Error: $e',
           ),
         ),
       );
@@ -125,6 +191,12 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
         title: const Text('Employee Profiles'),
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
+        actions: [
+          IconButton(
+              tooltip: 'Import Excel',
+              onPressed: _uploadExcel,
+              icon: const Icon(Icons.upload_file))
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
