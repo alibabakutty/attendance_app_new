@@ -112,12 +112,17 @@ class AttendanceApiService {
       'date': date,
     });
 
-    final response = await http.get(url, headers: await _headers());
+    final response = await http.get(
+      url,
+      headers: await _headers(),
+    );
+
+    if (response.statusCode == 404) {
+      // No attendance for this employee today
+      return null;
+    }
 
     final decoded = _handleResponse(response);
-
-    if (decoded == null) return null;
-
     return MarkAttendanceData.fromJson(decoded);
   }
 
@@ -135,10 +140,10 @@ class AttendanceApiService {
 
     final decoded = _handleResponse(response);
 
+    final List<dynamic> attendanceList = decoded["Data"] ?? [];
+
     // 🔥 IMPORTANT: convert JSON list → model list
-    return (decoded as List)
-        .map((e) => MarkAttendanceData.fromJson(e))
-        .toList();
+    return attendanceList.map((e) => MarkAttendanceData.fromJson(e)).toList();
   }
 
   // -------------------------------

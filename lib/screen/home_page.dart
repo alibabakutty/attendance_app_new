@@ -159,7 +159,16 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.cyanAccent),
+
+        // custom back arrow
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.cyanAccent,
+          ),
+          onPressed: () => _onLogout(context),
+        ),
+
         title: Text(
           authProvider.isAdmin ? 'Admin Dashboard' : 'Employee Dashboard',
           style: const TextStyle(
@@ -168,6 +177,7 @@ class _HomePageState extends State<HomePage> {
             color: Colors.cyanAccent,
           ),
         ),
+
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

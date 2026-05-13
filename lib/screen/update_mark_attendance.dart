@@ -94,7 +94,11 @@ class _UpdateMarkAttendanceState extends State<UpdateMarkAttendance> {
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('Fetch error: ${e.toString()}');
+        setState(() {
+          _officeTimeIn = null;
+          _officeTimeOut = null;
+          _isSubmitted = false;
+        });
       }
     } finally {
       if (mounted) {

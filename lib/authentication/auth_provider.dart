@@ -119,7 +119,7 @@ class AuthProvider extends ChangeNotifier {
       _token = response['token'];
       _username = response['username'];
       _role = response['role'];
-      _employeeId = response['employeeId'];
+      _employeeId = response['userEmployeeId'];
       _mobileNumber = response['mobileNumber'];
 
       // FIXED: use correct key from backend

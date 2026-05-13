@@ -132,29 +132,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   // TIME VALIDATION
   // =========================
 
-  bool _isWithinOfficeTimeInRange(DateTime time) {
-    final authProvider = Provider.of<AuthProvider>(
-      context,
-      listen: false,
-    );
-
-    final start = DateTime(time.year, time.month, time.day, 9, 0);
-    final end = authProvider.isAdmin
-        ? DateTime(time.year, time.month, time.day, 10, 30)
-        : DateTime(time.year, time.month, time.day, 9, 45);
-
-    return time.isAfter(start.subtract(const Duration(seconds: 1))) &&
-        time.isBefore(end.add(const Duration(seconds: 1)));
-  }
-
-  bool _isWithinOfficeTimeOutRange(DateTime time) {
-    final start = DateTime(time.year, time.month, time.day, 18, 30);
-    final end = DateTime(time.year, time.month, time.day, 19, 15);
-
-    return time.isAfter(start.subtract(const Duration(seconds: 1))) &&
-        time.isBefore(end.add(const Duration(seconds: 1)));
-  }
-
   // =========================
   // MARK ATTENDANCE
   // =========================
@@ -369,25 +346,33 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                   children: [
                     // HEADER: EMPTY | USERNAME | STATUS
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // LEFT EMPTY SPACE
-                        const SizedBox(width: 90),
-                        // CENTER USERNAME
                         Expanded(
-                          child: Center(
-                            child: Text(
-                              authProvider.username ?? '',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                                letterSpacing: 0.5,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${authProvider.employeeId ?? ''} - ${authProvider.username ?? ''}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                  letterSpacing: 0.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Employee Details',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        // RIGHT STATUS CARD
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -462,11 +447,31 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     ),
                     const SizedBox(height: 20),
 
+                    // SITE LOCATION HEADING
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          left: 5), // adjust to 0 or 1 if needed
+                      child: const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Site Location',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
                     // SITE DROPDOWN
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
+                        color: Colors.white,
                         border: Border.all(
                           color: Colors.grey.shade400,
                           width: 1,
@@ -503,14 +508,14 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     const SizedBox(height: 20),
 
                     _buildAttendanceCard(
-                      title: 'Office Time-In',
+                      title: 'Office In-Time',
                       icon: Icons.login,
                       time: _officeTimeIn,
                       actionType: 'officeIn',
                     ),
                     const SizedBox(height: 10),
                     _buildAttendanceCard(
-                      title: 'Office Time-Out',
+                      title: 'Office Out-Time',
                       icon: Icons.logout,
                       time: _officeTimeOut,
                       actionType: 'officeOut',
@@ -536,26 +541,26 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     bool showButton = _shouldEnableButton(actionType);
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 26,
+              radius: 20,
               backgroundColor: Colors.blue.shade50,
               child: Icon(
                 icon,
                 color: Colors.blue.shade800,
-                size: 26,
+                size: 20,
               ),
             ),
 
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
 
             /// Title
             Flexible(
@@ -565,7 +570,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -582,7 +587,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: time != null ? Colors.black : Colors.grey,
                 ),
@@ -591,7 +596,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
 
             /// Mark Button
             if (showButton) ...[
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               ElevatedButton(
                 onPressed: isLoading
                     ? null
@@ -604,12 +609,12 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[800],
-                  minimumSize: const Size(70, 40),
+                  minimumSize: const Size(60, 34),
                 ),
                 child: isLoading
                     ? const SizedBox(
-                        height: 18,
-                        width: 18,
+                        height: 16,
+                        width: 16,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2,

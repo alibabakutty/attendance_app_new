@@ -194,22 +194,6 @@ class _WidgetTreeState extends State<WidgetTree> {
     );
   }
 
-  // Widget _buildDividerWithText(String text) {
-  //   return Row(
-  //     children: [
-  //       const Expanded(child: Divider(color: Colors.white30, thickness: 1)),
-  //       Padding(
-  //         padding: const EdgeInsets.symmetric(horizontal: 10),
-  //         child: Text(
-  //           text,
-  //           style: const TextStyle(color: Colors.white70, fontSize: 14),
-  //         ),
-  //       ),
-  //       const Expanded(child: Divider(color: Colors.white30, thickness: 1)),
-  //     ],
-  //   );
-  // }
-
   Widget _buildVersionText() {
     return const Text(
       'Version 1.0.0',

@@ -70,14 +70,6 @@ class _AdminManageDashboardState extends State<AdminManageDashboard> {
         date: _formatDate(date),
       );
     } catch (e) {
-      if (!mounted) return null;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error fetching attendance: $e'),
-        ),
-      );
-
       return null;
     }
   }

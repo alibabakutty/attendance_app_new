@@ -41,7 +41,7 @@ class AttendanceApp extends StatelessWidget {
       create: (context) => AuthProvider(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Cloud9 Attendance Management',
+        title: 'Kanishkaa Attendance Management',
         theme: ThemeData(primarySwatch: Colors.blue),
         routes: {
           '/': (context) => const WidgetTree(),
