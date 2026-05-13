@@ -5,6 +5,7 @@ import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:attendance_app/screen/permission_hours.dart';
 
 const Color backgroundColor = Color(0xFF273F4F);
 const Color textPrimary = Color(0xFFF1F2F6);
@@ -257,6 +258,18 @@ class _HomePageState extends State<HomePage> {
                       onTap: () => _navigateTo(const AdminManageDashboard()),
                       adminOnly: true,
                     ),
+                    _buildDashboardCard(
+                        icon: Icons.schedule,
+                        title: "Permission Hours",
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFC1D1EA),
+                            Color(0xFFF9D19F),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => _navigateTo(const PermissionHours()))
                   ],
                 ),
               ),

@@ -6,14 +6,14 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class MarkAttendance extends StatefulWidget {
-  const MarkAttendance({super.key});
+class PermissionHours extends StatefulWidget {
+  const PermissionHours({super.key});
 
   @override
-  State<MarkAttendance> createState() => _MarkAttendanceState();
+  State<PermissionHours> createState() => _PermissionHoursState();
 }
 
-class _MarkAttendanceState extends State<MarkAttendance> {
+class _PermissionHoursState extends State<PermissionHours> {
   final String baseUrl =
       dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080');
   DateTime? _officeTimeIn;
@@ -255,6 +255,32 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     }
   }
 
+  String _getPermissionHours() {
+    if (_officeTimeIn == null || _officeTimeOut == null) {
+      return 'Not completed';
+    }
+
+    // Worked duration
+    final workedDuration = _officeTimeOut!.difference(_officeTimeIn!);
+
+    // Total required work = 8 hours in seconds
+    const totalWorkSeconds = 8 * 60 * 60;
+
+    // Remaining permission seconds
+    final remainingSeconds = totalWorkSeconds - workedDuration.inSeconds;
+
+    // If worked >= 8h
+    if (remainingSeconds <= 0) {
+      return '0 Hours 0 Minutes 0 Seconds';
+    }
+
+    final hours = remainingSeconds ~/ 3600;
+    final minutes = (remainingSeconds % 3600) ~/ 60;
+    final seconds = remainingSeconds % 60;
+
+    return '$hours Hours $minutes Minutes $seconds Seconds';
+  }
+
   void _onLogout(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -295,7 +321,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         backgroundColor: Colors.blue[800],
         centerTitle: true,
         title: const Text(
-          'Mark Attendance',
+          'Permission Hours',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -513,18 +539,54 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     ),
                     const SizedBox(height: 20),
 
-                    _buildAttendanceCard(
-                      title: 'Office In-Time',
-                      icon: Icons.login,
-                      time: _officeTimeIn,
-                      actionType: 'officeIn',
-                    ),
-                    const SizedBox(height: 10),
-                    _buildAttendanceCard(
-                      title: 'Office Out-Time',
-                      icon: Icons.logout,
-                      time: _officeTimeOut,
-                      actionType: 'officeOut',
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 24,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundColor: Colors.blue.shade50,
+                              child: Icon(
+                                Icons.schedule,
+                                color: Colors.blue.shade800,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Permission Hours',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _getPermissionHours(),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
