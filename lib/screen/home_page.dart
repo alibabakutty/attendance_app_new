@@ -1,8 +1,8 @@
 import 'package:attendance_app/authentication/auth_provider.dart';
-import 'package:attendance_app/screen/admin_manage_dashboard.dart';
 import 'package:attendance_app/screen/attendance_history.dart';
 import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
+// import 'package:attendance_app/screen/admin_manage_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:attendance_app/screen/permission_hours.dart';
@@ -21,6 +21,37 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   void _navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+  }
+
+  Future<void> _openMapWithCoordinates() async {
+    // Hardcoded target coordinates or replace with dynamic tracking values as needed
+    const double targetLatitude = 13.04;
+    const double targetLongitude = 80.18;
+
+    // Native deep link string construction
+    final String googleMapUrl =
+        "https://www.google.com/maps/search/?api=1&query=$targetLatitude,$targetLongitude";
+    final Uri mapUri = Uri.parse(googleMapUrl);
+
+    try {
+      // if (await canLaunchUrl(mapUri)) {
+      //   await launchUrl(
+      //     mapUri,
+      //     mode: LaunchMode.externalApplication, // Forces execution directly outside the app
+      //   );
+      // } else {
+      //   throw 'Could not launch mapping scheme application.';
+      // }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open maps: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onLogout(BuildContext context) {
@@ -214,7 +245,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 20,
                   mainAxisSpacing: 20,
-                  childAspectRatio: 0.9,
+                  childAspectRatio: 1.0,
                   children: [
                     _buildDashboardCard(
                       icon: Icons.access_time,
@@ -237,6 +268,18 @@ class _HomePageState extends State<HomePage> {
                       onTap: () => _navigateTo(const AttendanceHistory()),
                     ),
                     _buildDashboardCard(
+                        icon: Icons.schedule,
+                        title: "Permission Hours",
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFC1D1EA),
+                            Color(0xFFF9D19F),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => _navigateTo(const PermissionHours())),
+                    _buildDashboardCard(
                       icon: Icons.person_outline,
                       title: 'Employee Profile',
                       gradient: const LinearGradient(
@@ -248,6 +291,17 @@ class _HomePageState extends State<HomePage> {
                       adminOnly: true,
                     ),
                     _buildDashboardCard(
+                      icon: Icons.location_on,
+                      title: 'Employee Tracker',
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF11998e), Color(0xFF38ef7d)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: _openMapWithCoordinates,
+                      adminOnly: true, // Only accessible by administrators
+                    ),
+                    _buildDashboardCard(
                       icon: Icons.settings,
                       title: 'Admin Management',
                       gradient: const LinearGradient(
@@ -255,21 +309,37 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
-                      onTap: () => _navigateTo(const AdminManageDashboard()),
+                      // onTap: () => _navigateTo(const AdminManageDashboard()),
+                      onTap: () {
+                        ScaffoldMessenger.of(context)
+                            .clearSnackBars(); // Clears any active notices instantly
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.indigo.shade900,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            margin: const EdgeInsets.all(16),
+                            content: const Row(
+                              children: [
+                                Icon(Icons.auto_awesome,
+                                    color: Colors.amberAccent, size: 20),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Feature coming soon in the next development cycle!',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                       adminOnly: true,
                     ),
-                    _buildDashboardCard(
-                        icon: Icons.schedule,
-                        title: "Permission Hours",
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFC1D1EA),
-                            Color(0xFFF9D19F),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        onTap: () => _navigateTo(const PermissionHours()))
                   ],
                 ),
               ),

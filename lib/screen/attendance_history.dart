@@ -3,6 +3,8 @@ import 'package:attendance_app/service/attendance_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+import 'package:attendance_app/authentication/auth_provider.dart';
 
 class AttendanceHistory extends StatefulWidget {
   const AttendanceHistory({super.key});
@@ -133,9 +135,26 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         );
       }
 
+      final authProvider = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      );
+
+      List<MarkAttendanceData> filteredResults = results;
+
+// If employee → only show own attendance
+      if (authProvider.isEmployee) {
+        filteredResults = results.where((record) {
+          return record.employeeId == authProvider.employeeId;
+        }).toList();
+      }
+
+// If admin → show all records automatically
+
       setState(() {
-        _attendanceList = results;
-        if (results.isEmpty) {
+        _attendanceList = filteredResults;
+
+        if (filteredResults.isEmpty) {
           _errorMessage = 'No attendance records found';
         }
       });

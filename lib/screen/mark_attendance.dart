@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:attendance_app/modals/geopoint.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MarkAttendance extends StatefulWidget {
   const MarkAttendance({super.key});
@@ -58,6 +60,56 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     return 'Present';
   }
 
+  // ==========================================
+  // GEOLOCATION RESOLVER & PERMISSION CHECKER
+  // ==========================================
+  Future<GeoPoint?> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // 1. Test if location services are enabled globally on device.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showErrorSnackBar('Location services are disabled. Please enable GPS.');
+      return null;
+    }
+
+    // 2. Evaluate current runtime permissions.
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showErrorSnackBar('Location permissions are denied.');
+        return null;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showErrorSnackBar(
+          'Location permissions are permanently denied. Update app settings.');
+      return null;
+    }
+
+    // 3. Request high accuracy coordinate capture
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      return GeoPoint(
+          latitude: position.latitude, longitude: position.longitude);
+    } catch (e) {
+      debugPrint("Error fetching precise coordinates: $e");
+      return null;
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(backgroundColor: Colors.red, content: Text(message)),
+    );
+  }
+
   // =========================
   // FETCH TODAY ATTENDANCE
   // =========================
@@ -77,19 +129,33 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        // Safe check for empty response body strings or generic error fragments
+        if (response.body.trim().isEmpty) return;
+
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        // Pad the standalone backend LocalTime with today's date string
+        final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
         setState(() {
           _officeTimeIn = data['officeTimeIn'] != null
-              ? DateTime.parse(data['officeTimeIn'])
+              ? DateTime.parse('$todayStr ${data['officeTimeIn']}')
               : null;
 
           _officeTimeOut = data['officeTimeOut'] != null
-              ? DateTime.parse(data['officeTimeOut'])
+              ? DateTime.parse('$todayStr ${data['officeTimeOut']}')
               : null;
 
           _selectedSite = data['siteName'];
           _isSubmitted = _officeTimeOut != null;
+        });
+      } else if (response.statusCode == 404) {
+        // If your endpoint yields a 404 when no entry exists for today yet
+        setState(() {
+          _officeTimeIn = null;
+          _officeTimeOut = null;
+          _selectedSite = null;
+          _isSubmitted = false;
         });
       }
     } catch (e) {
@@ -155,22 +221,34 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       return;
     }
 
+    // Set specific loading state
+    setState(() {
+      if (actionType == 'officeIn') {
+        _isSavingIn = true;
+      } else {
+        _isSavingOut = true;
+      }
+    });
+
     try {
-      // Set specific loading state
-      setState(() {
-        if (actionType == 'officeIn') {
-          _isSavingIn = true;
-        } else {
-          _isSavingOut = true;
-        }
-      });
+      // Fetch current GPS snapshot
+      GeoPoint? currentGpsLocation = await _determinePosition();
+      if (currentGpsLocation == null) {
+        // Stop execution if tracking failed or permissions were denied
+        return;
+      }
 
       final body = {
-        "employeeId": authProvider.employeeId ?? "1001",
-        "employeeName": authProvider.username ?? "Perumal",
-        "mobileNumber": authProvider.mobileNumber ?? "9940013931",
+        "employeeId": authProvider.employeeId,
+        "employeeName": authProvider.username,
+        "mobileNumber": authProvider.mobileNumber,
         "siteName": _selectedSite,
         "status": actionType,
+        "tallyAttendanceStatus": "PENDING",
+        "officeTimeInLocation":
+            actionType == 'officeIn' ? currentGpsLocation.toJson() : null,
+        "officeTimeOutLocation":
+            actionType == 'officeOut' ? currentGpsLocation.toJson() : null,
       };
 
       final response = await http.post(

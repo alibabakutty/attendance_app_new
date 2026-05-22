@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:attendance_app/modals/geopoint.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PermissionHours extends StatefulWidget {
   const PermissionHours({super.key});
@@ -18,14 +20,13 @@ class _PermissionHoursState extends State<PermissionHours> {
       dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080');
   DateTime? _officeTimeIn;
   DateTime? _officeTimeOut;
+  DateTime? _permissionTimeIn;
+  DateTime? _permissionTimeOut;
 
-  bool _isSubmitted = false;
   bool _isLoading = true;
   bool _isSavingIn = false; // Separate loading for Time-In
   bool _isSavingOut = false; // Separate loading for Time-Out
 
-  List<String> _siteNames = [];
-  String? _selectedSite;
   String? employeeImageData;
 
   @override
@@ -79,17 +80,25 @@ class _PermissionHoursState extends State<PermissionHours> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        // Grab current date to structure standard format requirements
+        final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
         setState(() {
           _officeTimeIn = data['officeTimeIn'] != null
-              ? DateTime.parse(data['officeTimeIn'])
+              ? DateTime.parse('$todayStr ${data['officeTimeIn']}')
               : null;
 
           _officeTimeOut = data['officeTimeOut'] != null
-              ? DateTime.parse(data['officeTimeOut'])
+              ? DateTime.parse('$todayStr ${data['officeTimeOut']}')
               : null;
 
-          _selectedSite = data['siteName'];
-          _isSubmitted = _officeTimeOut != null;
+          _permissionTimeIn = data['permissionTimeIn'] != null
+              ? DateTime.parse('$todayStr ${data['permissionTimeIn']}')
+              : null;
+
+          _permissionTimeOut = data['permissionTimeOut'] != null
+              ? DateTime.parse('$todayStr ${data['permissionTimeOut']}')
+              : null;
         });
       }
     } catch (e) {
@@ -120,12 +129,9 @@ class _PermissionHoursState extends State<PermissionHours> {
       );
 
       if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
+        jsonDecode(response.body);
 
-        setState(() {
-          _siteNames =
-              data.map<String>((e) => e['siteName'].toString()).toList();
-        });
+        setState(() {});
       }
     } catch (e) {
       debugPrint('Site Fetch Error: $e');
@@ -133,48 +139,121 @@ class _PermissionHoursState extends State<PermissionHours> {
   }
 
   // =========================
-  // TIME VALIDATION
+  // GEOLOCATION SERVICE HELPER
   // =========================
+
+  Future<GeoPoint?> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if device location services are globally switched on
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showSnackBar(
+          'Location services are disabled. Please turn on GPS.', Colors.red);
+      return null;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _showSnackBar('Location permission requests were denied.', Colors.red);
+        return null;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showSnackBar(
+        'Location permissions are permanently denied. Please update app system settings.',
+        Colors.red,
+      );
+      return null;
+    }
+
+    // High accuracy ensures high-grade GPS logging coordinates are captured
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    return GeoPoint(latitude: position.latitude, longitude: position.longitude);
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
 
   // =========================
   // MARK ATTENDANCE
   // =========================
 
-  Future<void> _handleAction(String actionType) async {
-    // Check specific loading state
-    if (actionType == 'officeIn' && _isSavingIn) return;
-    if (actionType == 'officeOut' && _isSavingOut) return;
+  Future<void> _setPermissionTime(String actionType) async {
+    final authProvider = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (picked == null) return;
+
     final now = DateTime.now();
 
-    // Validation Logic
-    if (actionType == 'officeIn' && _selectedSite == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Please select site')));
+    final selectedDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      picked.hour,
+      picked.minute,
+    );
+
+    // Initial check to avoid location overhead if timelines are inverted
+    if (actionType == 'permissionOut' &&
+        _permissionTimeIn != null &&
+        selectedDateTime.isBefore(_permissionTimeIn!)) {
+      _showSnackBar(
+          'Permission end cannot be before permission start', Colors.red);
       return;
     }
 
+    // Set loading indicator flags to change targeted button to spinner UI layout
+    setState(() {
+      if (actionType == 'permissionIn') _isSavingIn = true;
+      if (actionType == 'permissionOut') _isSavingOut = true;
+    });
+
     try {
-      // Set specific loading state
-      setState(() {
-        if (actionType == 'officeIn') {
-          _isSavingIn = true;
-        } else {
-          _isSavingOut = true;
-        }
-      });
+      // Pull system coordinates
+      GeoPoint? currentPosition = await _determinePosition();
+      if (currentPosition == null) {
+        // Stop execution if location setup or extraction fails
+        return;
+      }
 
       final body = {
         "employeeId": authProvider.employeeId ?? "1001",
-        "employeeName": authProvider.username ?? "Perumal",
-        "mobileNumber": authProvider.mobileNumber ?? "9940013931",
-        "siteName": _selectedSite,
-        "status": actionType,
+        "employeeName": authProvider.username ?? "",
+        "mobileNumber": authProvider.mobileNumber ?? "",
+        "permissionTimeIn": actionType == 'permissionIn'
+            ? selectedDateTime.toIso8601String()
+            : null,
+        "permissionTimeInLocation":
+            actionType == 'permissionIn' ? currentPosition.toJson() : null,
+        "permissionTimeOut": actionType == 'permissionOut'
+            ? selectedDateTime.toIso8601String()
+            : null,
+        "permissionTimeOutLocation":
+            actionType == 'permissionOut' ? currentPosition.toJson() : null,
+        if (actionType == 'permissionIn') "tallyPermissionStatus": "PENDING",
       };
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/v1/attendance-masters/mark'),
+      final response = await http.put(
+        Uri.parse(
+          '$baseUrl/api/v1/attendance-masters/update-permission',
+        ),
         headers: {
           ...authProvider.authHeaders,
           'Content-Type': 'application/json',
@@ -182,43 +261,35 @@ class _PermissionHoursState extends State<PermissionHours> {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200) {
         setState(() {
-          if (actionType == 'officeIn') {
-            _officeTimeIn = now;
-          }
-          if (actionType == 'officeOut') {
-            _officeTimeOut = now;
-            _isSubmitted = true;
+          if (actionType == 'permissionIn') {
+            _permissionTimeIn = selectedDateTime;
+          } else if (actionType == 'permissionOut') {
+            _permissionTimeOut = selectedDateTime;
           }
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
+            content: Text('Permission time updated successfully'),
             backgroundColor: Colors.green,
-            content: Text('$actionType marked successfully'),
           ),
         );
       } else {
-        print("Server Error: ${response.body}");
-        throw Exception('Status Code: ${response.statusCode}');
+        throw Exception(response.body);
       }
     } catch (e) {
-      print("Connection Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.red,
           content: Text('Error: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
-      // Clear specific loading state
       setState(() {
-        if (actionType == 'officeIn') {
-          _isSavingIn = false;
-        } else {
-          _isSavingOut = false;
-        }
+        if (actionType == 'permissionIn') _isSavingIn = false;
+        if (actionType == 'permissionOut') _isSavingOut = false;
       });
     }
   }
@@ -228,15 +299,13 @@ class _PermissionHoursState extends State<PermissionHours> {
   // =========================
 
   bool _shouldEnableButton(String actionType) {
-    if (_isSubmitted) {
-      return false;
-    }
-
     switch (actionType) {
-      case 'officeIn':
-        return _officeTimeIn == null;
-      case 'officeOut':
-        return _officeTimeIn != null && _officeTimeOut == null;
+      case 'permissionIn':
+        return _permissionTimeIn == null;
+
+      case 'permissionOut':
+        return _permissionTimeIn != null && _permissionTimeOut == null;
+
       default:
         return false;
     }
@@ -256,27 +325,15 @@ class _PermissionHoursState extends State<PermissionHours> {
   }
 
   String _getPermissionHours() {
-    if (_officeTimeIn == null || _officeTimeOut == null) {
+    if (_permissionTimeIn == null || _permissionTimeOut == null) {
       return 'Not completed';
     }
 
-    // Worked duration
-    final workedDuration = _officeTimeOut!.difference(_officeTimeIn!);
+    final duration = _permissionTimeOut!.difference(_permissionTimeIn!);
 
-    // Total required work = 8 hours in seconds
-    const totalWorkSeconds = 8 * 60 * 60;
-
-    // Remaining permission seconds
-    final remainingSeconds = totalWorkSeconds - workedDuration.inSeconds;
-
-    // If worked >= 8h
-    if (remainingSeconds <= 0) {
-      return '0 Hours 0 Minutes 0 Seconds';
-    }
-
-    final hours = remainingSeconds ~/ 3600;
-    final minutes = (remainingSeconds % 3600) ~/ 60;
-    final seconds = remainingSeconds % 60;
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    final seconds = duration.inSeconds % 60;
 
     return '$hours Hours $minutes Minutes $seconds Seconds';
   }
@@ -477,67 +534,21 @@ class _PermissionHoursState extends State<PermissionHours> {
                     ),
                     const SizedBox(height: 20),
 
-                    // SITE LOCATION HEADING
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          left: 5), // adjust to 0 or 1 if needed
-                      child: const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Site Location',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
+                    _buildAttendanceCard(
+                      title: 'Permission Start',
+                      icon: Icons.login,
+                      time: _permissionTimeIn,
+                      actionType: 'permissionIn',
                     ),
 
-                    const SizedBox(height: 8),
-
-                    // SITE DROPDOWN
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                          color: Colors.grey.shade400,
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedSite,
-                          hint: const Text(
-                            'Select Site',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          isExpanded: true,
-                          isDense: true,
-                          iconSize: 20,
-                          items: _siteNames.map((site) {
-                            return DropdownMenuItem<String>(
-                              value: site,
-                              child: Text(
-                                site,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: _selectedSite != null
-                              ? null // disable dropdown after saved/fetched
-                              : (value) {
-                                  setState(() {
-                                    _selectedSite = value;
-                                  });
-                                },
-                        ),
-                      ),
+                    _buildAttendanceCard(
+                      title: 'Permission End',
+                      icon: Icons.logout,
+                      time: _permissionTimeOut,
+                      actionType: 'permissionOut',
                     ),
-                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 10),
 
                     Card(
                       elevation: 4,
@@ -605,7 +616,7 @@ class _PermissionHoursState extends State<PermissionHours> {
     required DateTime? time,
     required String actionType,
   }) {
-    bool isLoading = actionType == 'officeIn' ? _isSavingIn : _isSavingOut;
+    bool isLoading = actionType == 'permissionIn' ? _isSavingIn : _isSavingOut;
     bool showButton = _shouldEnableButton(actionType);
 
     return Card(
@@ -669,11 +680,7 @@ class _PermissionHoursState extends State<PermissionHours> {
                 onPressed: isLoading
                     ? null
                     : () async {
-                        if (actionType == 'officeOut') {
-                          await _confirmOfficeOut();
-                        } else {
-                          await _handleAction(actionType);
-                        }
+                        await _setPermissionTime(actionType);
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[800],
@@ -701,37 +708,5 @@ class _PermissionHoursState extends State<PermissionHours> {
         ),
       ),
     );
-  }
-
-  // =========================
-  // CONFIRM OFFICE OUT
-  // =========================
-
-  Future<void> _confirmOfficeOut() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm'),
-        content: const Text('Complete attendance for today?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context, false);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, true);
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await _handleAction('officeOut');
-    }
   }
 }

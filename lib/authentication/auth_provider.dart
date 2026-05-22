@@ -120,7 +120,8 @@ class AuthProvider extends ChangeNotifier {
       _username = response['username'];
       _role = response['role'];
       _employeeId = response['userEmployeeId'];
-      _mobileNumber = response['mobileNumber'];
+      _mobileNumber = response['mobileNumber']?.toString() ??
+          response['mobile_number']?.toString();
 
       // FIXED: use correct key from backend
       _employeeImageData = response['userImageData']?.replaceFirst(
