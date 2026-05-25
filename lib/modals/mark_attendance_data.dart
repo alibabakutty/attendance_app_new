@@ -18,62 +18,60 @@ class MarkAttendanceData {
   final String? tallyAttendanceStatus;
   final String? tallyPermissionStatus;
 
-  MarkAttendanceData({
-    required this.employeeId,
-    required this.employeeName,
-    this.mobileNumber,
-    this.attendanceDate,
-    this.siteName,
-    this.officeTimeIn,
-    this.officeTimeInLocation,
-    this.officeTimeOut,
-    this.officeTimeOutLocation,
-    this.permissionTimeIn,
-    this.permissionTimeInLocation,
-    this.permissionTimeOut,
-    this.permissionTimeOutLocation,
-    required this.status,
-    this.tallyAttendanceStatus,
-    this.tallyPermissionStatus
-  });
+  MarkAttendanceData(
+      {required this.employeeId,
+      required this.employeeName,
+      this.mobileNumber,
+      this.attendanceDate,
+      this.siteName,
+      this.officeTimeIn,
+      this.officeTimeInLocation,
+      this.officeTimeOut,
+      this.officeTimeOutLocation,
+      this.permissionTimeIn,
+      this.permissionTimeInLocation,
+      this.permissionTimeOut,
+      this.permissionTimeOutLocation,
+      required this.status,
+      this.tallyAttendanceStatus,
+      this.tallyPermissionStatus});
 
   factory MarkAttendanceData.fromJson(Map<String, dynamic> json) {
     return MarkAttendanceData(
-      employeeId: json['employeeId'] ?? '',
-      employeeName: json['employeeName'] ?? '',
-      mobileNumber: json['mobileNumber'],
-      attendanceDate: json['attendanceDate'] != null
-          ? DateTime.parse(json['attendanceDate'])
-          : null,
-      siteName: json['siteName'],
-      officeTimeIn: json['officeTimeIn'] != null
-          ? DateTime.parse(json['officeTimeIn'])
-          : null,
-      officeTimeInLocation: json['officeTimeInLocation'] != null
-          ? GeoPoint.fromJson(json['officeTimeInLocation'])
-          : null,
-      officeTimeOut: json['officeTimeOut'] != null
-          ? DateTime.parse(json['officeTimeOut'])
-          : null,
-      officeTimeOutLocation: json['officeTimeOutLocation'] != null
-          ? GeoPoint.fromJson(json['officeTimeOutLocation'])
-          : null,
-      permissionTimeIn: json['permissionTimeIn'] != null
-          ? DateTime.parse(json['permissionTimeIn'])
-          : null,
-      permissionTimeInLocation: json['permissionTimeInLocation'] != null
-          ? GeoPoint.fromJson(json['permissionTimeInLocation'])
-          : null,
-      permissionTimeOut: json['permissionTimeOut'] != null
-          ? DateTime.parse(json['permissionTimeOut'])
-          : null,
-      permissionTimeOutLocation: json['permissionTimeOutLocation'] != null
-          ? GeoPoint.fromJson(json['permissionTimeOutLocation'])
-          : null,
-      status: json['status'] ?? 'ABSENT',
-      tallyAttendanceStatus: json['tallyAttendanceStatus'] ?? null,
-      tallyPermissionStatus: json['tallyPermissionStatus'] ?? null
-    );
+        employeeId: json['employeeId'] ?? '',
+        employeeName: json['employeeName'] ?? '',
+        mobileNumber: json['mobileNumber'],
+        attendanceDate: json['attendanceDate'] != null
+            ? DateTime.parse(json['attendanceDate'])
+            : null,
+        siteName: json['siteName'],
+        officeTimeIn: json['officeTimeIn'] != null
+            ? DateTime.parse(json['officeTimeIn'])
+            : null,
+        officeTimeInLocation: json['officeTimeInLocation'] != null
+            ? GeoPoint.fromJson(json['officeTimeInLocation'])
+            : null,
+        officeTimeOut: json['officeTimeOut'] != null
+            ? DateTime.parse(json['officeTimeOut'])
+            : null,
+        officeTimeOutLocation: json['officeTimeOutLocation'] != null
+            ? GeoPoint.fromJson(json['officeTimeOutLocation'])
+            : null,
+        permissionTimeIn: json['permissionTimeIn'] != null
+            ? DateTime.parse(json['permissionTimeIn'])
+            : null,
+        permissionTimeInLocation: json['permissionTimeInLocation'] != null
+            ? GeoPoint.fromJson(json['permissionTimeInLocation'])
+            : null,
+        permissionTimeOut: json['permissionTimeOut'] != null
+            ? DateTime.parse(json['permissionTimeOut'])
+            : null,
+        permissionTimeOutLocation: json['permissionTimeOutLocation'] != null
+            ? GeoPoint.fromJson(json['permissionTimeOutLocation'])
+            : null,
+        status: json['status'] ?? 'ABSENT',
+        tallyAttendanceStatus: json['tallyAttendanceStatus'] ?? null,
+        tallyPermissionStatus: json['tallyPermissionStatus'] ?? null);
   }
 
   Map<String, dynamic> toJson() {

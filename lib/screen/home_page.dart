@@ -2,7 +2,7 @@ import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/screen/attendance_history.dart';
 import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
-// import 'package:attendance_app/screen/admin_manage_dashboard.dart';
+import 'package:attendance_app/screen/employee_tracker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:attendance_app/screen/permission_hours.dart';
@@ -21,37 +21,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   void _navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
-  }
-
-  Future<void> _openMapWithCoordinates() async {
-    // Hardcoded target coordinates or replace with dynamic tracking values as needed
-    const double targetLatitude = 13.04;
-    const double targetLongitude = 80.18;
-
-    // Native deep link string construction
-    final String googleMapUrl =
-        "https://www.google.com/maps/search/?api=1&query=$targetLatitude,$targetLongitude";
-    final Uri mapUri = Uri.parse(googleMapUrl);
-
-    try {
-      // if (await canLaunchUrl(mapUri)) {
-      //   await launchUrl(
-      //     mapUri,
-      //     mode: LaunchMode.externalApplication, // Forces execution directly outside the app
-      //   );
-      // } else {
-      //   throw 'Could not launch mapping scheme application.';
-      // }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to open maps: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   void _onLogout(BuildContext context) {
@@ -298,7 +267,7 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      onTap: _openMapWithCoordinates,
+                      onTap: () => _navigateTo(const EmployeeTracker()),
                       adminOnly: true, // Only accessible by administrators
                     ),
                     _buildDashboardCard(
