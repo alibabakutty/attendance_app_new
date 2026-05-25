@@ -744,8 +744,9 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         int compareResult;
         switch (column) {
           case 'Date':
-            compareResult =
-                a.attendanceDate!.compareTo(b.attendanceDate ?? DateTime.now());
+            final aDate = a.attendanceDate ?? DateTime(0);
+            final bDate = b.attendanceDate ?? DateTime(0);
+            compareResult = aDate.compareTo(bDate);
             break;
           case 'Name':
             compareResult = a.employeeName.compareTo(b.employeeName);

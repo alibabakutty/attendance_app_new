@@ -45,27 +45,39 @@ class MarkAttendanceData {
             ? DateTime.parse(json['attendanceDate'])
             : null,
         siteName: json['siteName'],
-        officeTimeIn: json['officeTimeIn'] != null
-            ? DateTime.parse(json['officeTimeIn'])
-            : null,
+        officeTimeIn:
+            json['officeTimeIn'] != null && json['attendanceDate'] != null
+                ? DateTime.parse(
+                    '${json['attendanceDate']}T${json['officeTimeIn']}',
+                  )
+                : null,
         officeTimeInLocation: json['officeTimeInLocation'] != null
             ? GeoPoint.fromJson(json['officeTimeInLocation'])
             : null,
-        officeTimeOut: json['officeTimeOut'] != null
-            ? DateTime.parse(json['officeTimeOut'])
-            : null,
+        officeTimeOut:
+            json['officeTimeOut'] != null && json['attendanceDate'] != null
+                ? DateTime.parse(
+                    '${json['attendanceDate']}T${json['officeTimeOut']}',
+                  )
+                : null,
         officeTimeOutLocation: json['officeTimeOutLocation'] != null
             ? GeoPoint.fromJson(json['officeTimeOutLocation'])
             : null,
-        permissionTimeIn: json['permissionTimeIn'] != null
-            ? DateTime.parse(json['permissionTimeIn'])
-            : null,
+        permissionTimeIn:
+            json['permissionTimeIn'] != null && json['attendanceDate'] != null
+                ? DateTime.parse(
+                    '${json['attendanceDate']}T${json['permissionTimeIn']}',
+                  )
+                : null,
         permissionTimeInLocation: json['permissionTimeInLocation'] != null
             ? GeoPoint.fromJson(json['permissionTimeInLocation'])
             : null,
-        permissionTimeOut: json['permissionTimeOut'] != null
-            ? DateTime.parse(json['permissionTimeOut'])
-            : null,
+        permissionTimeOut:
+            json['permissionTimeOut'] != null && json['attendanceDate'] != null
+                ? DateTime.parse(
+                    '${json['attendanceDate']}T${json['permissionTimeOut']}',
+                  )
+                : null,
         permissionTimeOutLocation: json['permissionTimeOutLocation'] != null
             ? GeoPoint.fromJson(json['permissionTimeOutLocation'])
             : null,
@@ -81,13 +93,29 @@ class MarkAttendanceData {
       "mobileNumber": mobileNumber,
       "attendanceDate": attendanceDate?.toIso8601String().split('T')[0],
       "siteName": siteName,
-      "officeTimeIn": officeTimeIn?.toIso8601String(),
+      "officeTimeIn": officeTimeIn != null
+          ? "${officeTimeIn!.hour.toString().padLeft(2, '0')}:"
+              "${officeTimeIn!.minute.toString().padLeft(2, '0')}:"
+              "${officeTimeIn!.second.toString().padLeft(2, '0')}"
+          : null,
       "officeTimeInLocation": officeTimeInLocation?.toJson(),
-      "officeTimeOut": officeTimeOut?.toIso8601String(),
+      "officeTimeOut": officeTimeOut != null
+          ? "${officeTimeOut!.hour.toString().padLeft(2, '0')}:"
+              "${officeTimeOut!.minute.toString().padLeft(2, '0')}:"
+              "${officeTimeOut!.second.toString().padLeft(2, '0')}"
+          : null,
       "officeTimeOutLocation": officeTimeOutLocation?.toJson(),
-      "permissionTimeIn": permissionTimeIn?.toIso8601String(),
+      "permissionTimeIn": permissionTimeIn != null
+          ? "${permissionTimeIn!.hour.toString().padLeft(2, '0')}:"
+              "${permissionTimeIn!.minute.toString().padLeft(2, '0')}:"
+              "${permissionTimeIn!.second.toString().padLeft(2, '0')}"
+          : null,
       "permissionTimeInLocation": permissionTimeInLocation?.toJson(),
-      "permissionTimeOut": permissionTimeOut?.toIso8601String(),
+      "permissionTimeOut": permissionTimeOut != null
+          ? "${permissionTimeOut!.hour.toString().padLeft(2, '0')}:"
+              "${permissionTimeOut!.minute.toString().padLeft(2, '0')}:"
+              "${permissionTimeOut!.second.toString().padLeft(2, '0')}"
+          : null,
       "permissionTimeOutLocation": permissionTimeOutLocation?.toJson(),
       "status": status,
       "tallyAttendanceStatus": tallyAttendanceStatus?.toString(),

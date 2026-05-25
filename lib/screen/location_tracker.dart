@@ -4,14 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:intl/intl.dart';
 
 class LocationTracker extends StatefulWidget {
-  const LocationTracker({
-    super.key,
-    this.mobileNumber,
-    required this.attendanceDate
-  });
+  const LocationTracker(
+      {super.key, this.mobileNumber, required this.attendanceDate});
 
   final String? mobileNumber;
   final String attendanceDate;
@@ -34,7 +30,6 @@ class _LocationTrackerState extends State<LocationTracker> {
 
   Future<void> fetchAttendance() async {
     try {
-      
       final url = Uri.parse(
         '$baseUrl/api/v1/attendance-masters/search-by-mobile-number-and-date'
         '?mobileNumber=${widget.mobileNumber}'
