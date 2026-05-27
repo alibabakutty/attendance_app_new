@@ -258,7 +258,7 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _searchType,
+        initialValue: _searchType,
         decoration: InputDecoration(
           labelText: 'Search By',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

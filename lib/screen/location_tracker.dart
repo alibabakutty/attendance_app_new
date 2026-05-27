@@ -6,8 +6,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LocationTracker extends StatefulWidget {
-  const LocationTracker(
-      {super.key, this.mobileNumber, required this.attendanceDate});
+  const LocationTracker({
+    super.key,
+    this.mobileNumber,
+    required this.attendanceDate,
+  });
 
   final String? mobileNumber;
   final String attendanceDate;
@@ -19,6 +22,7 @@ class LocationTracker extends StatefulWidget {
 class _LocationTrackerState extends State<LocationTracker> {
   Map<String, dynamic>? attendanceData;
   final baseUrl = dotenv.env['API_BASE_URL'];
+
   bool isLoading = true;
   String? error;
 
@@ -35,8 +39,6 @@ class _LocationTrackerState extends State<LocationTracker> {
         '?mobileNumber=${widget.mobileNumber}'
         '&attendanceDate=${widget.attendanceDate}',
       );
-
-      print(url);
 
       final response = await http.get(url);
 
@@ -59,11 +61,9 @@ class _LocationTrackerState extends State<LocationTracker> {
     }
   }
 
-  Widget infoTile(String title, String value) {
+  Widget infoTile(String title, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Expanded(
@@ -76,7 +76,7 @@ class _LocationTrackerState extends State<LocationTracker> {
             ),
           ),
           Text(
-            value,
+            value ?? "--",
             style: const TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 15,
@@ -143,10 +143,7 @@ class _LocationTrackerState extends State<LocationTracker> {
                 borderRadius: BorderRadius.circular(12),
                 child: FlutterMap(
                   options: MapOptions(
-                    initialCenter: LatLng(
-                      latitude,
-                      longitude,
-                    ),
+                    initialCenter: LatLng(latitude, longitude),
                     initialZoom: 15,
                   ),
                   children: [
@@ -158,10 +155,7 @@ class _LocationTrackerState extends State<LocationTracker> {
                     MarkerLayer(
                       markers: [
                         Marker(
-                          point: LatLng(
-                            latitude,
-                            longitude,
-                          ),
+                          point: LatLng(latitude, longitude),
                           width: 40,
                           height: 40,
                           child: const Icon(
@@ -209,13 +203,22 @@ class _LocationTrackerState extends State<LocationTracker> {
 
     final data = attendanceData!;
 
-    final officeInLat = data['officeTimeInLocation']['latitude'];
+    final officeInLat = data['officeTimeInLocation']?['latitude']?.toDouble();
+    final officeInLng = data['officeTimeInLocation']?['longitude']?.toDouble();
 
-    final officeInLng = data['officeTimeInLocation']['longitude'];
+    final officeOutLat = data['officeTimeOutLocation']?['latitude']?.toDouble();
+    final officeOutLng =
+        data['officeTimeOutLocation']?['longitude']?.toDouble();
 
-    final officeOutLat = data['officeTimeOutLocation']['latitude'];
+    final permissionInLat =
+        data['permissionTimeInLocation']?['latitude']?.toDouble();
+    final permissionInLng =
+        data['permissionTimeInLocation']?['longitude']?.toDouble();
 
-    final officeOutLng = data['officeTimeOutLocation']['longitude'];
+    final permissionOutLat =
+        data['permissionTimeOutLocation']?['latitude']?.toDouble();
+    final permissionOutLng =
+        data['permissionTimeOutLocation']?['longitude']?.toDouble();
 
     return Scaffold(
       appBar: AppBar(
@@ -229,26 +232,11 @@ class _LocationTrackerState extends State<LocationTracker> {
             sectionCard(
               title: "Employee Info",
               children: [
-                infoTile(
-                  "Employee ID",
-                  data['employeeId'],
-                ),
-                infoTile(
-                  "Name",
-                  data['employeeName'],
-                ),
-                infoTile(
-                  "Mobile",
-                  data['mobileNumber'],
-                ),
-                infoTile(
-                  "Site",
-                  data['siteName'],
-                ),
-                infoTile(
-                  "Date",
-                  data['attendanceDate'],
-                ),
+                infoTile("Employee ID", data['employeeId']),
+                infoTile("Name", data['employeeName']),
+                infoTile("Mobile", data['mobileNumber']),
+                infoTile("Site", data['siteName']),
+                infoTile("Date", data['attendanceDate']),
               ],
             ),
             const SizedBox(height: 16),
@@ -257,15 +245,15 @@ class _LocationTrackerState extends State<LocationTracker> {
               children: [
                 infoTile(
                   "Office In",
-                  data['officeTimeIn'],
+                  data['officeTimeIn']?.toString(),
                 ),
                 infoTile(
                   "Office Out",
-                  data['officeTimeOut'],
+                  data['officeTimeOut']?.toString(),
                 ),
                 infoTile(
                   "Status",
-                  data['status'],
+                  data['status']?.toString(),
                 ),
               ],
             ),
@@ -275,30 +263,50 @@ class _LocationTrackerState extends State<LocationTracker> {
               children: [
                 infoTile(
                   "Permission In",
-                  data['permissionTimeIn'],
+                  data['permissionTimeIn']?.toString(),
                 ),
                 infoTile(
                   "Permission Out",
-                  data['permissionTimeOut'],
+                  data['permissionTimeOut']?.toString(),
                 ),
                 infoTile(
                   "Total Hours",
-                  data['totalPermissionHours'],
+                  data['totalPermissionHours']?.toString(),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            mapCard(
-              title: "Office Check-In Location",
-              latitude: officeInLat,
-              longitude: officeInLng,
-            ),
-            const SizedBox(height: 16),
-            mapCard(
-              title: "Office Check-Out Location",
-              latitude: officeOutLat,
-              longitude: officeOutLng,
-            ),
+            if (officeInLat != null && officeInLng != null) ...[
+              mapCard(
+                title: "Office Check-In Location",
+                latitude: officeInLat,
+                longitude: officeInLng,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (officeOutLat != null && officeOutLng != null) ...[
+              mapCard(
+                title: "Office Check-Out Location",
+                latitude: officeOutLat,
+                longitude: officeOutLng,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (permissionInLat != null && permissionInLng != null) ...[
+              mapCard(
+                title: "Permission In Location",
+                latitude: permissionInLat,
+                longitude: permissionInLng,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (permissionOutLat != null && permissionOutLng != null) ...[
+              mapCard(
+                title: "Permission Out Location",
+                latitude: permissionOutLat,
+                longitude: permissionOutLng,
+              ),
+            ],
           ],
         ),
       ),

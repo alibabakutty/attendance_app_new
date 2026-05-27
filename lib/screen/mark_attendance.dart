@@ -416,7 +416,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -463,7 +463,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                           decoration: BoxDecoration(
                             color: _getStatusColor(
                               _getOverallAttendanceStatus(),
-                            ).withOpacity(0.15),
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -494,7 +494,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -579,7 +579,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                               ),
                             );
                           }).toList(),
-                          onChanged: _selectedSite != null
+                          onChanged: _officeTimeIn != null
                               ? null // disable dropdown after saved/fetched
                               : (value) {
                                   setState(() {

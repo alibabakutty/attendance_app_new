@@ -421,7 +421,7 @@ class _PermissionHoursState extends State<PermissionHours> {
                 borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -468,7 +468,7 @@ class _PermissionHoursState extends State<PermissionHours> {
                           decoration: BoxDecoration(
                             color: _getStatusColor(
                               _getOverallAttendanceStatus(),
-                            ).withOpacity(0.15),
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -499,7 +499,7 @@ class _PermissionHoursState extends State<PermissionHours> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
