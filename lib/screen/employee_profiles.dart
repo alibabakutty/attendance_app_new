@@ -32,9 +32,12 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
     try {
       final data = await _employeeApiService.getAllEmployees();
 
+      // A to Z sorting
+      data.sort((a, b) =>
+          a.employeeName.toLowerCase().compareTo(b.employeeName.toLowerCase()));
+
       setState(() {
         _employeeData = data;
-
         _isLoading = false;
       });
     } catch (e) {
@@ -127,58 +130,63 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.blueAccent,
-          backgroundImage: employee.employeeImageData != null &&
-                  employee.employeeImageData!.isNotEmpty
-              ? MemoryImage(
-                  base64Decode(
-                    employee.employeeImageData!,
-                  ),
-                )
-              : null,
-          child: employee.employeeImageData == null ||
-                  employee.employeeImageData!.isEmpty
-              ? const Icon(
-                  Icons.person,
-                  color: Colors.white,
-                )
-              : null,
-        ),
-        title: Text(
-          employee.employeeName,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1), // dark blue
-            fontSize: 18,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.blueAccent,
+            backgroundImage: employee.employeeImageData != null &&
+                    employee.employeeImageData!.isNotEmpty
+                ? MemoryImage(
+                    base64Decode(employee.employeeImageData!),
+                  )
+                : null,
+            child: employee.employeeImageData == null ||
+                    employee.employeeImageData!.isEmpty
+                ? const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                  )
+                : null,
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              "ID: ${employee.employeeId}",
-              style: const TextStyle(color: Colors.black54),
+          title: Text(
+            employee.employeeName,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D47A1),
+              fontSize: 18,
             ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFF0D47A1)),
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EmployeeMaster(
-                mobileNumber: employee.mobileNumber,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                "ID: ${employee.employeeId}",
+                style: const TextStyle(color: Colors.black54),
               ),
-            ),
-          );
+            ],
+          ),
+          trailing: const Icon(
+            Icons.arrow_forward_ios,
+            color: Color(0xFF0D47A1),
+          ),
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EmployeeMaster(
+                  mobileNumber: employee.mobileNumber,
+                ),
+              ),
+            );
 
-          _fetchEmployees();
-        },
+            _fetchEmployees();
+          },
+        ),
       ),
     );
   }

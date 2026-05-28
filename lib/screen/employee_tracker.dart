@@ -32,10 +32,12 @@ class _EmployeeTrackerState extends State<EmployeeTracker> {
 
     try {
       final data = await _employeeApiService.getAllEmployees();
+      // A to Z sorting
+      data.sort((a, b) =>
+          a.employeeName.toLowerCase().compareTo(b.employeeName.toLowerCase()));
 
       setState(() {
         _employeeData = data;
-
         _isLoading = false;
       });
     } catch (e) {
@@ -128,73 +130,85 @@ class _EmployeeTrackerState extends State<EmployeeTracker> {
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: Colors.blueAccent,
-          backgroundImage: employee.employeeImageData != null &&
-                  employee.employeeImageData!.isNotEmpty
-              ? MemoryImage(
-                  base64Decode(
-                    employee.employeeImageData!,
-                  ),
-                )
-              : null,
-          child: employee.employeeImageData == null ||
-                  employee.employeeImageData!.isEmpty
-              ? const Icon(
-                  Icons.person,
-                  color: Colors.white,
-                )
-              : null,
-        ),
-        title: Text(
-          employee.employeeName,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1), // dark blue
-            fontSize: 18,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              "ID: ${employee.employeeId}",
-              style: const TextStyle(color: Colors.black54),
-            ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFF0D47A1)),
-        onTap: () async {
-          // show the date picker first
-          final DateTime? selectedDate = await showDatePicker(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            // show the date picker first
+            final DateTime? selectedDate = await showDatePicker(
               context: context,
               initialDate: DateTime.now(),
               firstDate: DateTime(2000),
               lastDate: DateTime(2100),
-              helpText: "Select Specific Date for Get Location");
+              helpText: "Select Specific Date for Get Location",
+            );
 
-          if (selectedDate == null) return;
+            if (selectedDate == null) return;
 
-          final String formattedDate =
-              DateFormat('yyyy-MM-dd').format(selectedDate);
+            final String formattedDate =
+                DateFormat('yyyy-MM-dd').format(selectedDate);
 
-          if (!mounted) return;
+            if (!mounted) return;
 
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LocationTracker(
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LocationTracker(
                   mobileNumber: employee.mobileNumber,
-                  attendanceDate: formattedDate),
-            ),
-          );
+                  attendanceDate: formattedDate,
+                ),
+              ),
+            );
 
-          _fetchEmployees();
-        },
+            _fetchEmployees();
+          },
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.blueAccent,
+              backgroundImage: employee.employeeImageData != null &&
+                      employee.employeeImageData!.isNotEmpty
+                  ? MemoryImage(
+                      base64Decode(employee.employeeImageData!),
+                    )
+                  : null,
+              child: employee.employeeImageData == null ||
+                      employee.employeeImageData!.isEmpty
+                  ? const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+            title: Text(
+              employee.employeeName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D47A1),
+                fontSize: 18,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  "ID: ${employee.employeeId}",
+                  style: const TextStyle(
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFF0D47A1),
+            ),
+          ),
+        ),
       ),
     );
   }
