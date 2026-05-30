@@ -138,15 +138,6 @@ class _WidgetTreeState extends State<WidgetTree> {
       ),
       child: Column(
         children: [
-          // _buildLoginButton(
-          //   context,
-          //   text: 'ADMIN LOGIN',
-          //   onPressed: () => Navigator.pushNamed(context, '/adminLogin'),
-          //   isPrimary: true,
-          // ),
-          // const SizedBox(height: 15),
-          // _buildDividerWithText('OR'),
-          // const SizedBox(height: 15),
           _buildLoginButton(
             context,
             text: 'EMPLOYEE LOGIN',

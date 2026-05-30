@@ -52,7 +52,7 @@ class AttendanceApp extends StatelessWidget {
           '/employeeMaster': (context) => const EmployeeMaster(),
           '/markAttendance': (context) => const MarkAttendance(),
           '/attendanceHistory': (context) => const AttendanceHistory(),
-          '/adminManageDashboard': (context) => const AdminManageDashboard()
+          '/adminManageDashboard': (context) => const AdminManageDashboard(),
           // '/locationTracker': (context) => const LocationTracker()
         },
       ),
