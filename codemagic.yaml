@@ -7,15 +7,12 @@ workflows:
       xcode: latest
 
     scripts:
+      - name: Disable Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
       - name: Get packages
         script: flutter pub get
       - name: Clean build cache
         script: flutter clean
-      - name: Reset CocoaPods for SPM compatibility
-        script: |
-          cd ios
-          pod deintegrate || true
-          rm -f Podfile.lock
       - name: Build IPA
         script: flutter build ipa --release --no-codesign
 
