@@ -7,9 +7,17 @@ workflows:
       xcode: latest
 
     scripts:
-      - flutter pub get
-      - flutter clean
-      - flutter build ipa --release --no-codesign
+      - name: Get packages
+        script: flutter pub get
+      - name: Clean build cache
+        script: flutter clean
+      - name: Reset CocoaPods for SPM compatibility
+        script: |
+          cd ios
+          pod deintegrate || true
+          rm -f Podfile.lock
+      - name: Build IPA
+        script: flutter build ipa --release --no-codesign
 
     artifacts:
       - build/ios/ipa/*.ipa
