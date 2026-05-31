@@ -2,7 +2,6 @@ import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/screen/attendance_history.dart';
 import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
-import 'package:attendance_app/screen/employee_tracker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:attendance_app/screen/permission_hours.dart';
@@ -267,7 +266,34 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      onTap: () => _navigateTo(const EmployeeTracker()),
+                      onTap: () {
+                        ScaffoldMessenger.of(context)
+                            .clearSnackBars(); // Clears any active notices instantly
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.indigo.shade900,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            margin: const EdgeInsets.all(16),
+                            content: const Row(
+                              children: [
+                                Icon(Icons.auto_awesome,
+                                    color: Colors.amberAccent, size: 20),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Feature coming soon in the next development cycle!',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                       adminOnly: true, // Only accessible by administrators
                     ),
                     _buildDashboardCard(
@@ -278,7 +304,6 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
-                      // onTap: () => _navigateTo(const AdminManageDashboard()),
                       onTap: () {
                         ScaffoldMessenger.of(context)
                             .clearSnackBars(); // Clears any active notices instantly
