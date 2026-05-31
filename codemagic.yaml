@@ -8,9 +8,7 @@ workflows:
 
     scripts:
       - flutter pub get
-      - cd ios
-      - pod install
-      - cd ..
+      - flutter clean
       - flutter build ipa --release
 
     artifacts:
