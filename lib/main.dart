@@ -1,6 +1,5 @@
 import 'package:attendance_app/authentication/auth_provider.dart';
 import 'package:attendance_app/firebase_options.dart';
-import 'package:attendance_app/screen/admin_manage_dashboard.dart';
 import 'package:attendance_app/screen/attendance_history.dart';
 import 'package:attendance_app/screen/employee_login_page.dart';
 import 'package:attendance_app/screen/employee_master.dart';
@@ -52,7 +51,7 @@ class AttendanceApp extends StatelessWidget {
           '/employeeMaster': (context) => const EmployeeMaster(),
           '/markAttendance': (context) => const MarkAttendance(),
           '/attendanceHistory': (context) => const AttendanceHistory(),
-          '/adminManageDashboard': (context) => const AdminManageDashboard()
+          // '/adminManageDashboard': (context) => const AdminManageDashboard()
         },
       ),
     );

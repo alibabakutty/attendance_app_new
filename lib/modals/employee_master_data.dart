@@ -1,5 +1,59 @@
 import 'package:intl/intl.dart';
 
+class GeoPointData {
+  final double latitude;
+  final double longitude;
+
+  GeoPointData({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  factory GeoPointData.fromJson(Map<String, dynamic> json) {
+    return GeoPointData(
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
+}
+
+class EmployeeLocationData {
+  final String siteName;
+  final GeoPointData officeTimeInLocation;
+  final GeoPointData officeTimeOutLocation;
+
+  EmployeeLocationData({
+    required this.siteName,
+    required this.officeTimeInLocation,
+    required this.officeTimeOutLocation,
+  });
+
+  factory EmployeeLocationData.fromJson(Map<String, dynamic> json) {
+    return EmployeeLocationData(
+      siteName: json['siteName'] ?? '',
+      officeTimeInLocation:
+          GeoPointData.fromJson(json['officeTimeInLocation'] ?? {}),
+      officeTimeOutLocation:
+          GeoPointData.fromJson(json['officeTimeOutLocation'] ?? {}),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'siteName': siteName,
+      'officeTimeInLocation': officeTimeInLocation.toJson(),
+      'officeTimeOutLocation': officeTimeOutLocation.toJson(),
+    };
+  }
+}
+
 class EmployeeMasterData {
   final String employeeId;
   final String employeeName;
@@ -11,6 +65,7 @@ class EmployeeMasterData {
   final String password;
   final DateTime? createdAt;
   final String? employeeImageData;
+  final List<EmployeeLocationData> locations;
 
   EmployeeMasterData({
     required this.employeeId,
@@ -23,10 +78,18 @@ class EmployeeMasterData {
     required this.password,
     required this.createdAt,
     required this.employeeImageData,
+    required this.locations,
   });
 
   // FROM API RESPONSE
   factory EmployeeMasterData.fromJson(Map<String, dynamic> json) {
+    var locationsList = json['locations'] as List?;
+    List<EmployeeLocationData> parsedLocations = locationsList != null
+        ? locationsList
+            .map((loc) => EmployeeLocationData.fromJson(loc))
+            .toList()
+        : [];
+
     return EmployeeMasterData(
       employeeId: json['employeeId'] ?? '',
       employeeName: json['employeeName'] ?? '',
@@ -41,6 +104,7 @@ class EmployeeMasterData {
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       employeeImageData: json['employeeImageData'],
+      locations: parsedLocations,
     );
   }
 
@@ -59,6 +123,7 @@ class EmployeeMasterData {
       "password": password,
       "createdAt": createdAt?.toIso8601String(),
       "employeeImageData": employeeImageData,
+      "locations": locations.map((loc) => loc.toJson()).toList(),
     };
   }
 }

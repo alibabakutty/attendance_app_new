@@ -1,11 +1,11 @@
-import 'package:attendance_app/modals/employee_master_data.dart';
-import 'package:attendance_app/screen/employee_master.dart';
-import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:attendance_app/service/employee_api_service.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:attendance_app/modals/employee_master_data.dart';
+import 'package:attendance_app/screen/employee_master.dart';
+import 'package:attendance_app/service/employee_api_service.dart';
 import 'package:attendance_app/authentication/auth_provider.dart';
 
 class EmployeeProfiles extends StatefulWidget {
@@ -23,32 +23,46 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
   @override
   void initState() {
     super.initState();
-    _fetchEmployees();
+    // Fetch data safely after context components finish rendering
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchEmployees();
+    });
   }
 
   Future<void> _fetchEmployees() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
-      final data = await _employeeApiService.getAllEmployees();
+      // Pulling active authentication token out of Provider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
 
-      // A to Z sorting
+      if (token == null) {
+        throw Exception("Authentication token is missing. Please re-login.");
+      }
+
+      // Updated to match the refined service method parameter requirements
+      final data = await _employeeApiService.getAllEmployees(token);
+
+      // Simple case-insensitive A to Z alphabetical sorting
       data.sort((a, b) =>
           a.employeeName.toLowerCase().compareTo(b.employeeName.toLowerCase()));
 
-      setState(() {
-        _employeeData = data;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _employeeData = data;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Failed to load employees: $e',
-          ),
+          backgroundColor: Colors.red,
+          content: Text('Failed to load employees: $e'),
         ),
       );
     }
@@ -61,19 +75,17 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
         allowedExtensions: ['xlsx'],
       );
 
-      if (result == null) return;
+      if (result == null || result.files.single.path == null) return;
 
       final file = File(result.files.single.path!);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      final authProvider = Provider.of<AuthProvider>(
-        context,
-        listen: false,
-      );
+      if (authProvider.token == null) {
+        throw Exception("Authentication token missing.");
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Uploading employees...'),
-        ),
+        const SnackBar(content: Text('Uploading employee spreadsheet...')),
       );
 
       final success = await _employeeApiService.bulkUploadEmployees(
@@ -87,20 +99,15 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: Colors.green,
-            content: Text(
-              'Bulk employee upload successful',
-            ),
+            content: Text('Bulk employee upload successful'),
           ),
         );
-
         _fetchEmployees();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: Colors.red,
-            content: Text(
-              'Bulk upload failed',
-            ),
+            content: Text('Bulk upload failed. Verify data format structures.'),
           ),
         );
       }
@@ -108,9 +115,7 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
-          content: Text(
-            'Error: $e',
-          ),
+          content: Text('Upload exception: $e'),
         ),
       );
     }
@@ -122,11 +127,11 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 6,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -140,16 +145,11 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
             backgroundColor: Colors.blueAccent,
             backgroundImage: employee.employeeImageData != null &&
                     employee.employeeImageData!.isNotEmpty
-                ? MemoryImage(
-                    base64Decode(employee.employeeImageData!),
-                  )
+                ? MemoryImage(base64Decode(employee.employeeImageData!))
                 : null,
             child: employee.employeeImageData == null ||
                     employee.employeeImageData!.isEmpty
-                ? const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                  )
+                ? const Icon(Icons.person, color: Colors.white, size: 28)
                 : null,
           ),
           title: Text(
@@ -163,16 +163,41 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 "ID: ${employee.employeeId}",
-                style: const TextStyle(color: Colors.black54),
+                style: const TextStyle(
+                    color: Colors.black87, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              // --- LOCATION BADGE INTEGRATION ---
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: employee.locations.isEmpty
+                      ? Colors.amber.shade100
+                      : Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  employee.locations.isEmpty
+                      ? "No working sites assigned"
+                      : "Assigned Sites: ${employee.locations.length}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: employee.locations.isEmpty
+                        ? Colors.amber.shade900
+                        : Colors.green.shade900,
+                  ),
+                ),
               ),
             ],
           ),
           trailing: const Icon(
             Icons.arrow_forward_ios,
             color: Color(0xFF0D47A1),
+            size: 18,
           ),
           onTap: () async {
             await Navigator.push(
@@ -183,7 +208,7 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
                 ),
               ),
             );
-
+            // Refresh list context when returning back from editing view profiles
             _fetchEmployees();
           },
         ),
@@ -194,16 +219,18 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE3F2FD), // Soft light blue background
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: AppBar(
         title: const Text('Employee Profiles'),
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-              tooltip: 'Import Excel',
-              onPressed: _uploadExcel,
-              icon: const Icon(Icons.upload_file))
+            tooltip: 'Import Excel Sheet',
+            onPressed: _uploadExcel,
+            icon: const Icon(Icons.upload_file),
+          )
         ],
       ),
       body: _isLoading
@@ -226,10 +253,15 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.pushNamed(context, '/employeeMaster');
+          // Explicit Material Route navigation used for safety over unmapped string properties
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const EmployeeMaster()),
+          );
           _fetchEmployees();
         },
         backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
         tooltip: 'Add Employee',
         child: const Icon(Icons.add),
       ),

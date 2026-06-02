@@ -19,6 +19,7 @@ class EmployeeMaster extends StatefulWidget {
 class _EmployeeMasterState extends State<EmployeeMaster> {
   final EmployeeApiService _employeeApiService = EmployeeApiService();
   final _formKey = GlobalKey<FormState>();
+
   DateTime? _dateOfJoining;
   final TextEditingController _employeeIdController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -27,9 +28,10 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
   final TextEditingController _panController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _aadhaarDisplayController =
-      TextEditingController();
-  final TextEditingController _panDisplayController = TextEditingController();
+
+  // Dynamic state list containing nested multi-site scopes
+  List<EmployeeLocationData> _allocatedLocations = [];
+
   File? _selectedImage;
   String? _employeeImageData;
   final ImagePicker _picker = ImagePicker();
@@ -39,198 +41,206 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
   bool _obscureAadhaar = true;
   bool _obscurePan = true;
   bool _isEditing = false;
-
   EmployeeMasterData? _employeeData;
-  String? mobileNumberFromArgs;
 
   @override
   void initState() {
     super.initState();
-    mobileNumberFromArgs = widget.mobileNumber;
-    if (mobileNumberFromArgs != null) {
-      _mobileNumberController.text = mobileNumberFromArgs!;
+    if (widget.mobileNumber != null) {
+      _mobileNumberController.text = widget.mobileNumber!;
     }
-
-    _aadhaarController.addListener(_updateAadhaarDisplay);
-    _panController.addListener(_updatePanDisplay);
-
     _fetchEmployeeData();
   }
 
-  void _updateAadhaarDisplay() {
-    final text = _aadhaarController.text;
-    if (_obscureAadhaar) {
-      if (text.isEmpty) {
-        _aadhaarDisplayController.text = '';
-      } else if (text.length <= 4) {
-        _aadhaarDisplayController.text = 'XXXX' + text.substring(text.length);
-      } else if (text.length <= 8) {
-        _aadhaarDisplayController.text = 'XXXX XXXX ' + text.substring(4);
-      } else {
-        _aadhaarDisplayController.text =
-            'XXXX XXXX ' + text.substring(text.length - 4);
-      }
-    } else {
-      // Format as XXXX XXXX XXXX when visible
-      String formatted = '';
-      for (int i = 0; i < text.length; i++) {
-        if (i == 4 || i == 8) formatted += ' ';
-        formatted += text[i];
-      }
-      _aadhaarDisplayController.text = formatted;
-    }
-  }
-
-  void _updatePanDisplay() {
-    final text = _panController.text;
-    if (_obscurePan) {
-      if (text.isEmpty) {
-        _panDisplayController.text = '';
-      } else if (text.length <= 5) {
-        _panDisplayController.text = 'XXXXX' + text.substring(text.length);
-      } else {
-        _panDisplayController.text = 'XXXXX' + text.substring(5);
-      }
-    } else {
-      _panDisplayController.text = text;
-    }
-  }
-
   Future<void> _fetchEmployeeData() async {
-    if (mobileNumberFromArgs != null) {
+    if (widget.mobileNumber != null) {
       try {
-        _employeeData = await _employeeApiService
-            .getEmployeeByMobileNumber(mobileNumberFromArgs!);
-        if (_employeeData != null) {
-          setState(() {
-            _employeeIdController.text = _employeeData!.employeeId;
-            _nameController.text = _employeeData!.employeeName;
-            _mobileNumberController.text = _employeeData!.mobileNumber;
-            _dateOfJoining = _employeeData!.dateOfJoining;
-            _aadhaarController.text = _employeeData!.aadhaarNumber;
-            _panController.text = _employeeData!.panNumber;
-            _emailController.text = _employeeData!.email;
-            _passwordController.text = _employeeData!.password;
-            _employeeImageData = _employeeData!.employeeImageData;
-            _isEditing = true;
+        final token = await AuthService.getToken();
+        if (token == null) return;
 
-            _updateAadhaarDisplay();
-            _updatePanDisplay();
+        final employeeData =
+            await _employeeApiService.getEmployeeByMobileNumber(
+          widget.mobileNumber!,
+          token,
+        );
+
+        if (employeeData != null && mounted) {
+          setState(() {
+            _employeeData = employeeData;
+            _employeeIdController.text = employeeData.employeeId;
+            _nameController.text = employeeData.employeeName;
+            _mobileNumberController.text = employeeData.mobileNumber;
+            _dateOfJoining = employeeData.dateOfJoining;
+            _aadhaarController.text = employeeData.aadhaarNumber;
+            _panController.text = employeeData.panNumber;
+            _emailController.text = employeeData.email;
+            _passwordController.text = employeeData.password;
+            _employeeImageData = employeeData.employeeImageData;
+            _allocatedLocations = List.from(employeeData.locations);
+            _isEditing = true;
           });
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching employee data: $e')),
-        );
+        _showSnackBar('Error fetching employee data: $e');
       }
     }
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
+  void _addNewLocationScope() {
+    final siteController = TextEditingController();
+    final inLatController = TextEditingController();
+    final inLonController = TextEditingController();
+    final outLatController = TextEditingController();
+    final outLonController = TextEditingController();
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Assigned Office Location'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: siteController,
+                  decoration: const InputDecoration(labelText: 'Site Name')),
+              TextField(
+                  controller: inLatController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Check-In Latitude')),
+              TextField(
+                  controller: inLonController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Check-In Longitude')),
+              TextField(
+                  controller: outLatController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Check-Out Latitude')),
+              TextField(
+                  controller: outLonController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Check-Out Longitude')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (siteController.text.isNotEmpty &&
+                  inLatController.text.isNotEmpty &&
+                  inLonController.text.isNotEmpty) {
+                setState(() {
+                  _allocatedLocations.add(
+                    EmployeeLocationData(
+                      siteName: siteController.text.trim(),
+                      officeTimeInLocation: GeoPointData(
+                        latitude: double.parse(inLatController.text.trim()),
+                        longitude: double.parse(inLonController.text.trim()),
+                      ),
+                      officeTimeOutLocation: GeoPointData(
+                        latitude: double.parse(outLatController.text.trim()),
+                        longitude: double.parse(outLonController.text.trim()),
+                      ),
+                    ),
+                  );
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add Location'),
+          )
+        ],
+      ),
+    );
   }
 
   Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isSubmitting = true);
+    if (!_formKey.currentState!.validate()) return;
+    if (_dateOfJoining == null) {
+      _showSnackBar('Please select date of joining');
+      return;
+    }
 
-      try {
-        if (_dateOfJoining == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Please select date of joining',
-              ),
-            ),
-          );
+    setState(() => _isSubmitting = true);
 
-          return;
-        }
-
-        String? base64Image = _employeeImageData;
-
-        if (_selectedImage != null) {
-          final imageBytes = await _selectedImage!.readAsBytes();
-
-          base64Image = base64Encode(imageBytes);
-        }
-
-        final employeeData = EmployeeMasterData(
-          employeeId: _employeeIdController.text.trim(),
-          employeeName: _nameController.text.trim(),
-          mobileNumber: _mobileNumberController.text.trim(),
-          dateOfJoining: _dateOfJoining,
-          aadhaarNumber: _aadhaarController.text.trim(),
-          panNumber: _panController.text.trim(),
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          createdAt: DateTime.now(),
-          employeeImageData: base64Image,
-        );
-
-        bool success;
-
-        if (_isEditing) {
-          success = await _employeeApiService.updateEmployee(
-            _mobileNumberController.text.trim(),
-            employeeData,
-          );
-        } else {
-          final token = await AuthService.getToken();
-          success =
-              await _employeeApiService.createEmployee(employeeData, token!);
-        }
-
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isEditing
-                    ? 'Employee updated successfully'
-                    : 'Employee saved successfully',
-              ),
-            ),
-          );
-
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Operation failed',
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error: $e',
-            ),
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() => _isSubmitting = false);
-        }
+    try {
+      String? base64Image = _employeeImageData;
+      if (_selectedImage != null) {
+        final imageBytes = await _selectedImage!.readAsBytes();
+        base64Image = base64Encode(imageBytes);
       }
+
+      final employeeData = EmployeeMasterData(
+        employeeId: _employeeIdController.text.trim(),
+        employeeName: _nameController.text.trim(),
+        mobileNumber: _mobileNumberController.text.trim(),
+        dateOfJoining: _dateOfJoining,
+        aadhaarNumber: _aadhaarController.text.trim(),
+        panNumber: _panController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        createdAt: _isEditing ? _employeeData?.createdAt : DateTime.now(),
+        employeeImageData: base64Image,
+        locations: _allocatedLocations,
+      );
+
+      final token = await AuthService.getToken();
+      if (token == null)
+        throw Exception("Session Authentication Token Expired");
+
+      bool success = _isEditing
+          ? await _employeeApiService.updateEmployee(
+              _mobileNumberController.text.trim(), employeeData, token)
+          : await _employeeApiService.createEmployee(employeeData, token);
+
+      if (success && mounted) {
+        _showSnackBar(_isEditing
+            ? 'Employee updated successfully'
+            : 'Employee saved successfully');
+        Navigator.pop(context);
+      } else {
+        _showSnackBar('Operation database rejected submission');
+      }
+    } catch (e) {
+      _showSnackBar('Error execution failure: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showSnackBar(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (pickedFile != null) {
+      setState(() => _selectedImage = File(pickedFile.path));
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfJoining ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _dateOfJoining = picked);
     }
   }
 
   @override
   void dispose() {
-    _aadhaarDisplayController.dispose();
-    _panDisplayController.dispose();
     _employeeIdController.dispose();
     _nameController.dispose();
     _mobileNumberController.dispose();
@@ -239,20 +249,6 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        _dateOfJoining = picked;
-      });
-    }
   }
 
   @override
@@ -273,245 +269,138 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.grey.shade300,
-                          backgroundImage: _selectedImage != null
-                              ? FileImage(_selectedImage!)
-                              : (_employeeImageData != null &&
-                                      _employeeImageData!.isNotEmpty)
-                                  ? MemoryImage(
-                                      base64Decode(
-                                        _employeeImageData!,
-                                      ),
-                                    )
-                                  : null,
-                          child: _selectedImage == null &&
-                                  (_employeeImageData == null ||
-                                      _employeeImageData!.isEmpty)
-                              ? const Icon(
-                                  Icons.camera_alt,
-                                  size: 40,
-                                )
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey.shade300,
+                      backgroundImage: _selectedImage != null
+                          ? FileImage(_selectedImage!)
+                          : (_employeeImageData != null &&
+                                  _employeeImageData!.isNotEmpty)
+                              ? MemoryImage(base64Decode(_employeeImageData!))
                               : null,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: _pickImage,
-                        child: const Text('Select Employee Image'),
-                      ),
-                    ],
+                      child: _selectedImage == null &&
+                              (_employeeImageData == null ||
+                                  _employeeImageData!.isEmpty)
+                          ? const Icon(Icons.camera_alt, size: 40)
+                          : null,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Employee ID Field
                 TextFormField(
                   controller: _employeeIdController,
                   decoration: const InputDecoration(
-                    labelText: 'Employee ID',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.badge),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter employee ID';
-                    }
-                    return null;
-                  },
+                      labelText: 'Employee ID',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.badge)),
+                  validator: (v) => v!.isEmpty ? 'Enter employee ID' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Employee Name Field
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Employee Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter employee name';
-                    }
-                    return null;
-                  },
+                      labelText: 'Employee Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person)),
+                  validator: (v) => v!.isEmpty ? 'Enter employee name' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Mobile Number Field
                 TextFormField(
                   controller: _mobileNumberController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                    hintText: '10-digit mobile number',
-                    prefixText: '+91 ',
-                  ),
                   maxLength: 10,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter mobile number';
-                    }
-                    if (value.length != 10) {
-                      return 'Mobile number must be 10 digits';
-                    }
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'Only numbers are allowed';
-                    }
-                    return null;
-                  },
+                  decoration: const InputDecoration(
+                      labelText: 'Mobile Number',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
+                      prefixText: '+91 '),
+                  validator: (v) => v!.length != 10
+                      ? 'Mobile number must be 10 digits'
+                      : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Date of Joining Field
                 InkWell(
                   onTap: () => _selectDate(context),
                   child: InputDecorator(
                     decoration: const InputDecoration(
-                      labelText: 'Date of Joining',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.calendar_today),
-                    ),
+                        labelText: 'Date of Joining',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today)),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          _dateOfJoining == null
-                              ? 'Select date'
-                              : DateFormat('dd/MM/yyyy')
-                                  .format(_dateOfJoining!),
-                        ),
+                        Text(_dateOfJoining == null
+                            ? 'Select date'
+                            : DateFormat('dd/MM/yyyy').format(_dateOfJoining!)),
                         const Icon(Icons.arrow_drop_down),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Aadhaar Number Field
                 TextFormField(
-                  controller: _aadhaarDisplayController,
+                  controller: _aadhaarController,
+                  obscureText: _obscureAadhaar,
+                  keyboardType: TextInputType.number,
+                  maxLength: 12,
                   decoration: InputDecoration(
                     labelText: 'Aadhaar Number',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.credit_card),
-                    hintText: 'XXXX XXXX XXXX',
                     suffixIcon: IconButton(
                       icon: Icon(_obscureAadhaar
                           ? Icons.visibility_off
                           : Icons.visibility),
-                      onPressed: () {
-                        setState(() {
-                          _obscureAadhaar = !_obscureAadhaar;
-                          _updateAadhaarDisplay();
-                        });
-                      },
+                      onPressed: () =>
+                          setState(() => _obscureAadhaar = !_obscureAadhaar),
                     ),
                   ),
-                  keyboardType: TextInputType.number,
-                  maxLength: 14, // 12 digits + 2 spaces
-                  validator: (value) {
-                    final actualValue = _aadhaarController.text;
-                    if (actualValue.isEmpty)
-                      return 'Please enter Aadhaar number';
-                    if (actualValue.length < 12)
-                      return 'Aadhaar must be 12 digits';
-                    return null;
-                  },
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(14),
-                  ],
-                  onChanged: (value) {
-                    // Remove spaces and update the actual controller
-                    final cleanedValue = value.replaceAll(' ', '');
-                    if (cleanedValue != _aadhaarController.text) {
-                      _aadhaarController.text = cleanedValue;
-                      _aadhaarController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _aadhaarController.text.length),
-                      );
-                    }
-                  },
+                  validator: (v) =>
+                      v!.length < 12 ? 'Aadhaar must be 12 digits' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // PAN Number Field
                 TextFormField(
-                  controller: _panDisplayController,
+                  controller: _panController,
+                  obscureText: _obscurePan,
+                  maxLength: 10,
+                  inputFormatters: [
+                    UpperCaseTextFormatter(),
+                    FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]'))
+                  ],
                   decoration: InputDecoration(
                     labelText: 'PAN Number',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.credit_card),
-                    hintText: 'ABCDE1234F',
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePan
                           ? Icons.visibility_off
                           : Icons.visibility),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePan = !_obscurePan;
-                          _updatePanDisplay();
-                        });
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePan = !_obscurePan),
                     ),
                   ),
-                  maxLength: 10,
-                  validator: (value) {
-                    final actualValue = _panController.text;
-                    if (actualValue.isEmpty) return 'Please enter PAN number';
-                    if (actualValue.length < 10)
-                      return 'PAN must be 10 characters';
-                    return null;
-                  },
-                  inputFormatters: [
-                    UpperCaseTextFormatter(),
-                    FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  onChanged: (value) {
-                    if (value != _panController.text) {
-                      _panController.text = value;
-                      _panController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _panController.text.length),
-                      );
-                    }
-                  },
+                  validator: (v) =>
+                      v!.length < 10 ? 'PAN must be 10 characters' : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Email Field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                    hintText: 'employee@company.com',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter email address';
-                    }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                        .hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email)),
+                  validator: (v) =>
+                      !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v!)
+                          ? 'Enter valid email'
+                          : null,
                 ),
                 const SizedBox(height: 16),
-
-                // Password Field
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -520,49 +409,80 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    hintText: 'At least 6 characters',
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
+                  validator: (v) => v!.length < 6
+                      ? 'Password must be at least 6 characters'
+                      : null,
                 ),
                 const SizedBox(height: 24),
 
-                // Submit Button
+                // --- SUB-COLLECTION LOCATIONS SECTION ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Assigned Work Sites (${_allocatedLocations.length})",
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    TextButton.icon(
+                        onPressed: _addNewLocationScope,
+                        icon: const Icon(Icons.add_location_alt),
+                        label: const Text("Add Site")),
+                  ],
+                ),
+                const Divider(),
+                _allocatedLocations.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text("No location scopes assigned yet.",
+                            style: TextStyle(
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic)),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _allocatedLocations.length,
+                        itemBuilder: (context, index) {
+                          final loc = _allocatedLocations[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            child: ListTile(
+                              leading: const Icon(Icons.location_on,
+                                  color: Colors.blue),
+                              title: Text(loc.siteName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              subtitle: Text(
+                                  "In: ${loc.officeTimeInLocation.latitude}, ${loc.officeTimeInLocation.longitude}\nOut: ${loc.officeTimeOutLocation.latitude}, ${loc.officeTimeOutLocation.longitude}"),
+                              trailing: IconButton(
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => setState(
+                                    () => _allocatedLocations.removeAt(index)),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    backgroundColor: Colors.blue,
-                  ),
+                      minimumSize: const Size(double.infinity, 50),
+                      backgroundColor: Colors.blue),
                   child: _isSubmitting
-                      ? const CircularProgressIndicator(
-                          color: Colors.white,
-                        )
-                      : Text(
-                          _isEditing ? 'Update Employee' : 'Save Employee',
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(_isEditing ? 'Update Employee' : 'Save Employee',
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                 ),
               ],
             ),
@@ -573,6 +493,7 @@ class _EmployeeMasterState extends State<EmployeeMaster> {
   }
 }
 
+// Paste this at the absolute bottom of your file
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
