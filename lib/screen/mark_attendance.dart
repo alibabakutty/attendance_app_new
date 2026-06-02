@@ -17,7 +17,7 @@ class MarkAttendance extends StatefulWidget {
 
 class _MarkAttendanceState extends State<MarkAttendance> {
   final String baseUrl =
-      dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.3:8080');
+      dotenv.get('API_BASE_URL', fallback: 'http://192.168.1.4:8080');
   DateTime? _officeTimeIn;
   DateTime? _officeTimeOut;
 
@@ -60,9 +60,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     return 'Present';
   }
 
-  // ==========================================
-  // GEOLOCATION RESOLVER & PERMISSION CHECKER
-  // ==========================================
   Future<GeoPoint?> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -198,14 +195,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     }
   }
 
-  // =========================
-  // TIME VALIDATION
-  // =========================
-
-  // =========================
-  // MARK ATTENDANCE
-  // =========================
-
   Future<void> _handleAction(String actionType) async {
     // Check specific loading state
     if (actionType == 'officeIn' && _isSavingIn) return;
@@ -244,12 +233,16 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         "mobileNumber": authProvider.mobileNumber,
         "siteName": _selectedSite,
         "status": actionType,
-        "tallyAttendanceStatus": "PENDING",
+        "tallyAttendanceStatus": "null",
         "officeTimeInLocation":
             actionType == 'officeIn' ? currentGpsLocation.toJson() : null,
         "officeTimeOutLocation":
             actionType == 'officeOut' ? currentGpsLocation.toJson() : null,
       };
+
+      if (actionType == 'officeOut') {
+        body["tallyAttendanceStatus"] = "PENDING";
+      }
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/v1/attendance-masters/mark'),
@@ -300,10 +293,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       });
     }
   }
-
-  // =========================
-  // BUTTON ENABLE
-  // =========================
 
   bool _shouldEnableButton(String actionType) {
     if (_isSubmitted) {
@@ -358,10 +347,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       ),
     );
   }
-
-  // =========================
-  // UI
-  // =========================
 
   @override
   Widget build(BuildContext context) {
@@ -718,10 +703,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       ),
     );
   }
-
-  // =========================
-  // CONFIRM OFFICE OUT
-  // =========================
 
   Future<void> _confirmOfficeOut() async {
     final confirm = await showDialog<bool>(
