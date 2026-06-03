@@ -5,6 +5,7 @@ import 'package:attendance_app/screen/mark_attendance.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:attendance_app/screen/permission_hours.dart';
+import 'package:attendance_app/screen/employee_tracker.dart';
 
 const Color backgroundColor = Color(0xFF273F4F);
 const Color textPrimary = Color(0xFFF1F2F6);
@@ -266,34 +267,7 @@ class _HomePageState extends State<HomePage> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      onTap: () {
-                        ScaffoldMessenger.of(context)
-                            .clearSnackBars(); // Clears any active notices instantly
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: Colors.indigo.shade900,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            margin: const EdgeInsets.all(16),
-                            content: const Row(
-                              children: [
-                                Icon(Icons.auto_awesome,
-                                    color: Colors.amberAccent, size: 20),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Feature coming soon in the next development cycle!',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: () => _navigateTo(const EmployeeTracker()),
                       adminOnly: true, // Only accessible by administrators
                     ),
                     _buildDashboardCard(

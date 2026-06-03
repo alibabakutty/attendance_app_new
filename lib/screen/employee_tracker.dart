@@ -1,5 +1,5 @@
 import 'package:attendance_app/modals/employee_master_data.dart';
-import 'package:attendance_app/screen/employee_master.dart';
+import 'package:attendance_app/screen/location_tracker.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:attendance_app/service/employee_api_service.dart';
@@ -7,15 +7,16 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:attendance_app/authentication/auth_provider.dart';
+import 'package:intl/intl.dart';
 
-class EmployeeProfiles extends StatefulWidget {
-  const EmployeeProfiles({super.key});
+class EmployeeTracker extends StatefulWidget {
+  const EmployeeTracker({super.key});
 
   @override
-  State<EmployeeProfiles> createState() => _EmployeeProfilesState();
+  State<EmployeeTracker> createState() => _EmployeeTrackerState();
 }
 
-class _EmployeeProfilesState extends State<EmployeeProfiles> {
+class _EmployeeTrackerState extends State<EmployeeTracker> {
   final EmployeeApiService _employeeApiService = EmployeeApiService();
   List<EmployeeMasterData> _employeeData = [];
   bool _isLoading = true;
@@ -31,7 +32,6 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
 
     try {
       final data = await _employeeApiService.getAllEmployees();
-
       // A to Z sorting
       data.sort((a, b) =>
           a.employeeName.toLowerCase().compareTo(b.employeeName.toLowerCase()));
@@ -133,59 +133,81 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.blueAccent,
-            backgroundImage: employee.employeeImageData != null &&
-                    employee.employeeImageData!.isNotEmpty
-                ? MemoryImage(
-                    base64Decode(employee.employeeImageData!),
-                  )
-                : null,
-            child: employee.employeeImageData == null ||
-                    employee.employeeImageData!.isEmpty
-                ? const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                  )
-                : null,
-          ),
-          title: Text(
-            employee.employeeName,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D47A1),
-              fontSize: 18,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Text(
-                "ID: ${employee.employeeId}",
-                style: const TextStyle(color: Colors.black54),
-              ),
-            ],
-          ),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            color: Color(0xFF0D47A1),
-          ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
           onTap: () async {
+            // show the date picker first
+            final DateTime? selectedDate = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              helpText: "Select Specific Date for Get Location",
+            );
+
+            if (selectedDate == null) return;
+
+            final String formattedDate =
+                DateFormat('yyyy-MM-dd').format(selectedDate);
+
+            if (!mounted) return;
+
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => EmployeeMaster(
+                builder: (context) => LocationTracker(
                   mobileNumber: employee.mobileNumber,
+                  attendanceDate: formattedDate,
                 ),
               ),
             );
 
             _fetchEmployees();
           },
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.blueAccent,
+              backgroundImage: employee.employeeImageData != null &&
+                      employee.employeeImageData!.isNotEmpty
+                  ? MemoryImage(
+                      base64Decode(employee.employeeImageData!),
+                    )
+                  : null,
+              child: employee.employeeImageData == null ||
+                      employee.employeeImageData!.isEmpty
+                  ? const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+            title: Text(
+              employee.employeeName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D47A1),
+                fontSize: 18,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  "ID: ${employee.employeeId}",
+                  style: const TextStyle(
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFF0D47A1),
+            ),
+          ),
         ),
       ),
     );
@@ -194,45 +216,46 @@ class _EmployeeProfilesState extends State<EmployeeProfiles> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE3F2FD), // Soft light blue background
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: AppBar(
-        title: const Text('Employee Profiles'),
+        title: const Text('Employee Tracking System'),
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
         actions: [
           IconButton(
-              tooltip: 'Import Excel',
-              onPressed: _uploadExcel,
-              icon: const Icon(Icons.upload_file))
+            tooltip: 'Import Excel',
+            onPressed: _uploadExcel,
+            icon: const Icon(Icons.upload_file),
+          ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : _employeeData.isEmpty
               ? const Center(
                   child: Text(
                     'No employees added yet',
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _fetchEmployees,
                   child: ListView.builder(
-                    padding: const EdgeInsets.only(top: 8, bottom: 80),
+                    padding: const EdgeInsets.only(
+                      top: 8,
+                      bottom: 20,
+                    ),
                     itemCount: _employeeData.length,
-                    itemBuilder: (context, index) =>
-                        _buildEmployeeCard(_employeeData[index]),
+                    itemBuilder: (context, index) => _buildEmployeeCard(
+                      _employeeData[index],
+                    ),
                   ),
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/employeeMaster');
-          _fetchEmployees();
-        },
-        backgroundColor: Colors.blueAccent,
-        tooltip: 'Add Employee',
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }

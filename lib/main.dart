@@ -5,7 +5,6 @@ import 'package:attendance_app/screen/employee_login_page.dart';
 import 'package:attendance_app/screen/employee_master.dart';
 import 'package:attendance_app/screen/employee_profiles.dart';
 import 'package:attendance_app/screen/home_page.dart';
-import 'package:attendance_app/screen/admin_login_page.dart';
 import 'package:attendance_app/screen/mark_attendance.dart';
 import 'package:attendance_app/widget_tree.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -44,7 +43,6 @@ class AttendanceApp extends StatelessWidget {
         theme: ThemeData(primarySwatch: Colors.blue),
         routes: {
           '/': (context) => const WidgetTree(),
-          '/adminLogin': (context) => const AdminLoginPage(),
           '/employeeLogin': (context) => const EmployeeLoginPage(),
           '/home': (context) => const HomePage(),
           '/employeeProfiles': (context) => const EmployeeProfiles(),

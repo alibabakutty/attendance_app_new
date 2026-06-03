@@ -487,10 +487,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
-                        child: authProvider.employeeImageData != null &&
-                                authProvider.employeeImageData!.isNotEmpty
+                        child: authProvider.employeeImageBytes != null
                             ? Image.memory(
-                                base64Decode(authProvider.employeeImageData!),
+                                authProvider.employeeImageBytes!,
                                 fit: BoxFit.cover,
                               )
                             : Container(
