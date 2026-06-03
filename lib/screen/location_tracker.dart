@@ -49,7 +49,7 @@ class _LocationTrackerState extends State<LocationTracker> {
         });
       } else {
         setState(() {
-          error = "Failed to load attendance";
+          error = "No attendance records found for the given date.";
           isLoading = false;
         });
       }
