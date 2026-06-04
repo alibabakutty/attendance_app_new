@@ -13,9 +13,8 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.kanishkaa.attendanceapp
 
-      # App Store Connect API already configured in Codemagic UI
-      integrations:
-        app_store_connect: Kanishkaa attendance app
+    integrations:
+      app_store_connect: Kanishkaa attendance app
 
     scripts:
       - name: Clean project
