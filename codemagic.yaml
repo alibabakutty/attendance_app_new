@@ -1,6 +1,7 @@
 workflows:
   ios-method-2:
     name: iOS signing method-2 workflow
+    max_build_duration: 60
     environment:
       ios_signing:
         provisioning_profiles:
@@ -25,7 +26,7 @@ workflows:
       app_store_connect:
         auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
-        timeout: 15 # 💡 Limits the wait time to 15 minutes max
+        cancel_on_build_waiting: true
       email:
         recipients:
           - tallysriram007@gmail.com
