@@ -20,12 +20,13 @@ workflows:
       - name: Clean project
         script: flutter clean
 
-      - name: Get packages
+      - name: Get dependencies
         script: flutter pub get
 
-      - name: Build IPA
-        script: flutter build ipa --release \
-          --dart-define=API_BASE_URL=$API_BASE_URL
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release \
+            --dart-define=API_BASE_URL=$API_BASE_URL
 
     artifacts:
       - build/ios/ipa/*.ipa
