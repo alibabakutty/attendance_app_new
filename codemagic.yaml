@@ -25,7 +25,10 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
-        submit_to_testflight: true
+        submit_to_app_store: true
+
+        release_type: SCHEDULED
+        release_notes: "Automated release from Codemagic"
       email:
         recipients:
           - tallysriram007@gmail.com
