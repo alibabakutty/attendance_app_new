@@ -6,29 +6,13 @@ workflows:
       flutter: stable
       xcode: latest
 
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kanishkaa.attendanceapp
-
     integrations:
       app_store_connect: Kanishkaa attendance app
 
     scripts:
-      - name: Disable Swift Package Manager
-        script: |
-          flutter config --no-enable-swift-package-manager
-
-      - name: Get packages
-        script: |
-          flutter pub get
-
-      - name: Clean build
-        script: |
-          flutter clean
-
-      - name: Build IPA
-        script: |
-          flutter build ipa --release
+      - flutter pub get
+      - flutter clean
+      - flutter build ipa --release
 
     artifacts:
       - build/ios/ipa/*.ipa
