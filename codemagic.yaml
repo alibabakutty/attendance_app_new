@@ -26,7 +26,8 @@ workflows:
       app_store_connect:
         auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
-        cancel_on_build_waiting: true
+        testflight_additional_properties:
+          cancel_on_build_waiting: true
       email:
         recipients:
           - tallysriram007@gmail.com
