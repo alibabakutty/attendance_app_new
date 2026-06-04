@@ -1,37 +1,23 @@
-workflows:
-  ios-release:
-    name: iOS Release
+recipients:
+      - tallysriram007@gmail.com
 
-    environment:
-      flutter: stable
-      xcode: latest
-
-      groups:
-        - kanishka_env
-
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kanishkaa.attendanceapp
-
-    integrations:
-      app_store_connect: Kanishkaa attendance app
-
-    scripts:
-      - name: Clean project
-        script: flutter clean
-
-      - name: Get dependencies
-        script: flutter pub get
-
-      - name: Build iOS IPA
-        script: |
-          flutter build ipa --release \
-            --dart-define=API_BASE_URL=$API_BASE_URL
-
-    artifacts:
-      - build/ios/ipa/*.ipa
-
-    publishing:
-      email:
-        recipients:
-          - tallysriram007@gmail.com
+ios-method-2:
+  name: iOS signing method-2 workflow
+  environment:
+    ios_signing:
+      provisioning_profiles:
+        - kanishkaa_appstore_profile
+      certificates:
+        - Distribute_Certificate
+  scripts:
+    - script: xcode-project use-profiles
+    - script: flutter packages pub get
+    - name: Flutter build ipa and automatic versioning
+      script: |
+        flutter build ipa --export-options-plist=/Users/builder/export_options.plist
+  artifacts:
+    - build/ios/ipa/*.ipa
+  publishing:
+    email:
+      recipients:
+        - tallysriram007@gmail.com
