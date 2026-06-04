@@ -7,6 +7,10 @@ workflows:
       xcode: latest
       groups:
         - kanishka_env
+      # IMPROVEMENT: Added automatic iOS signing configuration using your App Store Connect integration
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kanishkaa.attendanceapp # Ensure this matches your newly updated bundle ID
 
     integrations:
       app_store_connect: Kanishkaa attendance app
@@ -16,10 +20,21 @@ workflows:
         script: |
           flutter config --no-enable-swift-package-manager
 
+      # IMPROVEMENT: Added required keychain initialization scripts as shown in your images
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+          keychain add-certificates
+
       - name: Clean and get packages
         script: |
           flutter clean
           flutter pub get
+
+      # IMPROVEMENT: Added xcode-project use-profiles to bind the certificates to the build execution
+      - name: Set up code signing profiles
+        script: |
+          xcode-project use-profiles
 
       - name: Build iOS IPA
         script: |
@@ -34,4 +49,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - tallysriram007@gmail.com # Updated based on your screenshots' destination email
