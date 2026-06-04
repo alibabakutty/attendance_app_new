@@ -690,13 +690,17 @@ class _AttendanceHistoryState extends State<AttendanceHistory> {
                   title: Text(column, style: const TextStyle(fontSize: 14)),
                   value: _selectedColumns.contains(column),
                   onChanged: (selected) {
-                    setState(() {
+                    setStatePopup(() {
                       if (selected!) {
-                        _selectedColumns.add(column);
+                        if (!_selectedColumns.contains(column)) {
+                          _selectedColumns.add(column);
+                        }
                       } else {
                         _selectedColumns.remove(column);
                       }
                     });
+
+                    setState(() {});
                   },
                   controlAffinity: ListTileControlAffinity.leading,
                   dense: true,
