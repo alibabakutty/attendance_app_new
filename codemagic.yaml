@@ -6,6 +6,13 @@ workflows:
       flutter: stable
       xcode: latest
 
+    ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kanishkaa.attendanceapp
+
+    integrations:
+      app_store_connect: Kanishkaa attendance app
+
     scripts:
       - name: Disable Swift Package Manager
         script: flutter config --no-enable-swift-package-manager
