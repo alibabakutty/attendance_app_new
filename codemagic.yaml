@@ -1,6 +1,4 @@
-# The root element must define the workflows block
 workflows:
-
   ios-method-2:
     name: iOS signing method-2 workflow
     environment:
@@ -17,7 +15,15 @@ workflows:
           flutter build ipa --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
+    
+    # ⬇️ UPDATED PUBLISHING SECTION ⬇️
     publishing:
+      app_store_connect:
+        auth: integration
+        # This must match the exact name of your App Store Connect integration in Codemagic
+        integration: Kanishkaa attendance app 
+        # Set to true to submit the build to TestFlight automatically
+        submit_to_testflight: true
       email:
         recipients:
           - tallysriram007@gmail.com
