@@ -7,6 +7,11 @@ workflows:
           - kanishkaa_appstore_profile
         certificates:
           - Distribute_Certificate
+
+    # ⬇️ LINK YOUR UI INTEGRATION AT THE WORKFLOW ROOT LEVEL ⬇️
+    integrations:
+      app_store_connect: 'Kanishkaa attendance app'
+
     scripts:
       - script: xcode-project use-profiles
       - script: flutter packages pub get
@@ -16,10 +21,9 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
     
-    # ⬇️ UPDATED PUBLISHING SECTION ⬇️
     publishing:
       app_store_connect:
-        # Set to true to submit the build to TestFlight automatically
+        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
       email:
         recipients:
