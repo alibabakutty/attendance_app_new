@@ -5,25 +5,28 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+
       groups:
         - kanishka_env
 
-    integrations:
-      app_store_connect: Kanishkaa attendance app
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.kanishkaa.attendanceapp
+
+      # App Store Connect API already configured in Codemagic UI
+      integrations:
+        app_store_connect: Kanishkaa attendance app
 
     scripts:
-      - name: Disable Swift Package Manager
-        script: flutter config --no-enable-swift-package-manager
+      - name: Clean project
+        script: flutter clean
 
-      - name: Clean and get packages
-        script: |
-          flutter clean
-          flutter pub get
+      - name: Get packages
+        script: flutter pub get
 
       - name: Build IPA
-        script: |
-          flutter build ipa --release \
-            --dart-define=API_BASE_URL=$API_BASE_URL
+        script: flutter build ipa --release \
+          --dart-define=API_BASE_URL=$API_BASE_URL
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -31,4 +34,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - tallysriram007@gmail.com
+          - your-email@gmail.com
