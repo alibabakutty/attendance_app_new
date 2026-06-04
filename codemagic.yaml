@@ -19,7 +19,6 @@ workflows:
     # ⬇️ UPDATED PUBLISHING SECTION ⬇️
     publishing:
       app_store_connect:
-        auth: 'Kanishkaa attendance app'
         # Set to true to submit the build to TestFlight automatically
         submit_to_testflight: true
       email:
