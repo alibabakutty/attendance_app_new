@@ -5,14 +5,33 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+      groups:
+        - kanishka_env
 
     integrations:
       app_store_connect: Kanishkaa attendance app
 
     scripts:
-      - flutter pub get
-      - flutter clean
-      - flutter build ipa --release
+      - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager
+
+      - name: Clean and get packages
+        script: |
+          flutter clean
+          flutter pub get
+
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --dart-define=API_BASE_URL=$API_BASE_URL
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
