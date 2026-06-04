@@ -28,7 +28,6 @@ workflows:
         submit_to_app_store: true
 
         release_type: SCHEDULED
-        release_notes: "Automated release from Codemagic"
       email:
         recipients:
           - tallysriram007@gmail.com
