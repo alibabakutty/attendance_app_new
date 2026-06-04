@@ -21,7 +21,7 @@ workflows:
       app_store_connect:
         auth: integration
         # This must match the exact name of your App Store Connect integration in Codemagic
-        integration: Kanishkaa attendance app 
+        integration: 'Kanishkaa attendance app'
         # Set to true to submit the build to TestFlight automatically
         submit_to_testflight: true
       email:
