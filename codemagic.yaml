@@ -9,8 +9,8 @@ workflows:
         certificates:
           - Kanishkaa Attendance Distribution
 
-    integrations:
-      app_store_connect: 'Kanishkaa attendance app'
+    # integrations:
+    #   app_store_connect: 'Kanishkaa attendance app'
 
     scripts:
       - script: xcode-project use-profiles
