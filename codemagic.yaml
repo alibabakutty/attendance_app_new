@@ -37,7 +37,7 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_app_store: true
-        release_type: IMMEDIATE
+        release_type: SCHEDULED
 
       email:
         recipients:
