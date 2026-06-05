@@ -2,43 +2,32 @@ workflows:
   ios-method-2:
     name: iOS signing method-2 workflow
     max_build_duration: 60
-
     environment:
-      flutter: stable
-
       ios_signing:
-        certificates:
-          - Kanishkaa Attendance Distribution
         provisioning_profiles:
           - Kanishkaa Mobile Distribution
+        certificates:
+          - Kanishkaa Attendance Distribution
 
+    # ⬇️ LINK YOUR UI INTEGRATION AT THE WORKFLOW ROOT LEVEL ⬇️
     integrations:
-      app_store_connect: Kanishkaa attendance app
+      app_store_connect: 'Kanishkaa attendance app'
 
     scripts:
-      - name: Clean project
-        script: flutter clean
-
-      - name: Get packages
-        script: flutter pub get
-
-      - name: Increment build number
+      - script: xcode-project use-profiles
+      - script: flutter packages pub get
+      - name: Flutter build ipa and automatic versioning
         script: |
-          agvtool new-version -all 1.0.$BUILD_NUMBER
-
-      - name: Build IPA
-        script: |
-          flutter build ipa --release
-
+          flutter build ipa --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
-
+    
     publishing:
       app_store_connect:
-        auth: integration
+        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_app_store: true
-        release_type: SCHEDULED
 
+        release_type: SCHEDULED
       email:
         recipients:
           - appletabperumal@icloud.com
