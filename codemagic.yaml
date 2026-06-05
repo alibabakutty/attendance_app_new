@@ -5,9 +5,9 @@ workflows:
     environment:
       ios_signing:
         provisioning_profiles:
-          - kanishkaa_appstore_profile
+          - Kanishkaa Mobile Distribution
         certificates:
-          - Distribute_Certificate
+          - Kanishkaa Attendance Distribution
 
     # ⬇️ LINK YOUR UI INTEGRATION AT THE WORKFLOW ROOT LEVEL ⬇️
     integrations:
