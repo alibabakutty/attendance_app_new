@@ -26,7 +26,7 @@ workflows:
         api_key_id: $APP_STORE_CONNECT_KEY_ID
         key_id: 67BGU4Y9H5
         issuer_id: 7f630180-39c4-4d47-be0a-d6b37961beb6
-        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
+        # auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
         beta_groups:
           - kanishkaa_group
