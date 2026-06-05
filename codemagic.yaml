@@ -9,8 +9,8 @@ workflows:
         certificates:
           - Kanishkaa Attendance Distribution
 
-    # integrations:
-    #   app_store_connect: 'Kanishkaa attendance app'
+    integrations:
+      app_store_connect: 'Kanishkaa attendance app'
 
     scripts:
       - script: xcode-project use-profiles
@@ -23,14 +23,10 @@ workflows:
     
     publishing:
       app_store_connect:
-        auth: api_key
-        api_key: $APP_STORE_CONNECT_KEY_ID
-        key_id: 67BGU4Y9H5
-        issuer_id: 7f630180-39c4-4d47-be0a-d6b37961beb6
-        # auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
-        submit_to_testflight: true
-        beta_groups:
-          - kanishkaa_group
+        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
+        submit_to_app_store: true
+
+        release_type: SCHEDULED
       email:
         recipients:
           - appletabperumal@icloud.com
