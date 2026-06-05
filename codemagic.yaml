@@ -8,9 +8,9 @@ workflows:
           - Kanishkaa Mobile Distribution
         certificates:
           - Kanishkaa Attendance Distribution
-    vars:
-      APP_STORE_APPLE_ID: 6776598247
-      BUNDLE_ID: com.kanishkaa.attendanceapp
+      vars:
+        APP_STORE_APPLE_ID: 6776598247
+        BUNDLE_ID: com.kanishkaa.attendanceapp
 
 
     integrations:
