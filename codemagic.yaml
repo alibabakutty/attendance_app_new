@@ -29,8 +29,6 @@ workflows:
       app_store_connect:
         auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
-        cancel_previous_submissions: true
-        release_type: MANUAL
       email:
         recipients:
           - appletabperumal@icloud.com
