@@ -1,23 +1,26 @@
-workflows:
-  ios-release-workflow:
-    name: Flutter iOS App Store Build
-    # This line tells Codemagic to skip the root and step into your subfolder!
-    working_directory: attendance_app_new
-    environment:
-      flutter: stable
-      xcode: latest
-    triggering:
-      events:
-        - push
-        - pull_request
-      branch_patterns:
-        - pattern: main
-    scripts:
-      - name: Fetch Flutter Dependencies
-        script: |
-          flutter pub get
-      - name: Build production IPA
-        script: |
-          flutter build ipa --release --dont-bundle-sentry-symbols
-    artifacts:
-      - build/ios/ipa/*.ipa
+ios-release-workflow:
+  name: Flutter iOS App Store Build
+  working_directory: attendance_app_new
+  environment:
+    flutter: stable
+    xcode: 16.4
+  triggering:
+    events:
+      - push
+      - pull_request
+    branch_patterns:
+      - pattern: main
+  scripts:
+    - name: Flutter version
+      script: flutter --version
+    - name: Fetch Flutter Dependencies
+      script: flutter pub get --verbose
+    - name: Install iOS Pods
+      script: |
+        cd ios
+        pod install
+        cd ..
+    - name: Build production IPA
+      script: flutter build ipa --release --dont-bundle-sentry-symbols
+  artifacts:
+    - build/ios/ipa/*.ipa
