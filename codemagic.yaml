@@ -1,26 +1,34 @@
-ios-release-workflow:
-  name: Flutter iOS App Store Build
-  working_directory: attendance_app_new
-  environment:
-    flutter: stable
-    xcode: 16.4
-  triggering:
-    events:
-      - push
-      - pull_request
-    branch_patterns:
-      - pattern: main
-  scripts:
-    - name: Flutter version
-      script: flutter --version
-    - name: Fetch Flutter Dependencies
-      script: flutter pub get --verbose
-    - name: Install iOS Pods
-      script: |
-        cd ios
-        pod install
-        cd ..
-    - name: Build production IPA
-      script: flutter build ipa --release --dont-bundle-sentry-symbols
-  artifacts:
-    - build/ios/ipa/*.ipa
+workflows:
+  ios-method-2:
+    name: iOS signing method-2 workflow
+    max_build_duration: 60
+    environment:
+      ios_signing:
+        provisioning_profiles:
+          - Development Profiles2
+        certificates:
+          - Development Certificate2
+      vars:
+        APP_STORE_APPLE_ID: 6777390758
+        BUNDLE_ID: com.kanishkaa.attendanceapp2026
+
+
+    integrations:
+      app_store_connect: 'Kanishkaa attendance2'
+
+    scripts:
+      - script: xcode-project use-profiles
+      - script: flutter packages pub get
+      - name: Flutter build ipa and automatic versioning
+        script: |
+          flutter build ipa --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    
+    publishing:
+      app_store_connect:
+        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
+        submit_to_testflight: true
+      email:
+        recipients:
+          - appletabperumal@icloud.com
