@@ -11,23 +11,30 @@ workflows:
       vars:
         APP_STORE_APPLE_ID: 6777390758
         BUNDLE_ID: com.kanishkaa.attendanceapp2026
-
+        # Automatically generate unique build number based on timestamp
+        PROJECT_BUILD_NUMBER: $(( $(date +%s) / 10 ))
 
     integrations:
-      app_store_connect: 'Codemagic2' 
+      app_store_connect: 'Codemagic2'
 
     scripts:
       - script: xcode-project use-profiles
+
       - script: flutter packages pub get
-      - name: Flutter build ipa and automatic versioning
+
+      - name: Flutter build ipa with automatic build number
         script: |
-          flutter build ipa --export-options-plist=/Users/builder/export_options.plist
+          echo "Using build number: $PROJECT_BUILD_NUMBER"
+          flutter build ipa --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
     artifacts:
       - build/ios/ipa/*.ipa
-    
+
     publishing:
       app_store_connect:
-        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
+        auth: integration   # Uses the 'Codemagic2' integration
         submit_to_testflight: true
       email:
         recipients:
