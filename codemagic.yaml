@@ -14,7 +14,7 @@ workflows:
 
 
     integrations:
-      app_store_connect: 'codemagic2' 
+      app_store_connect: 'Codemagic2' 
 
     scripts:
       - script: xcode-project use-profiles
