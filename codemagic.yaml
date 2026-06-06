@@ -1,34 +1,22 @@
 workflows:
-  ios-method-2:
-    name: iOS signing method-2 workflow
-    max_build_duration: 60
+  ios-release-workflow:
+    name: Flutter iOS App Store Build
+    # This line tells Codemagic to skip the root and step into your subfolder!
+    working_directory: attendance_app_new
     environment:
-      ios_signing:
-        provisioning_profiles:
-          - Kanishkaa Mobile Distribution
-        certificates:
-          - Kanishkaa Attendance Distribution
-      vars:
-        APP_STORE_APPLE_ID: 6776598247
-        BUNDLE_ID: com.kanishkaa.attendanceapp2026
-
-
-    integrations:
-      app_store_connect: 'Kanishkaa attendance app'
-
+      flutter: stable
+      xcode: latest
+    triggering:
+      events:
+        - push
+      watched_branches:
+        - main
     scripts:
-      - script: xcode-project use-profiles
-      - script: flutter packages pub get
-      - name: Flutter build ipa and automatic versioning
+      - name: Fetch Flutter Dependencies
         script: |
-          flutter build ipa --export-options-plist=/Users/builder/export_options.plist
+          flutter pub get
+      - name: Build production IPA
+        script: |
+          flutter build ipa --release --dont-bundle-sentry-symbols
     artifacts:
       - build/ios/ipa/*.ipa
-    
-    publishing:
-      app_store_connect:
-        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
-        submit_to_testflight: true
-      email:
-        recipients:
-          - appletabperumal@icloud.com
