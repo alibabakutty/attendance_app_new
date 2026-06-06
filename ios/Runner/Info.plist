@@ -28,6 +28,15 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Added purpose strings for Apple privacy rules -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location is used to mark attendance accurately while the app is in use.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Location is used in the background to validate attendance records.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Access to the photo library is required to select profile pictures.</string>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,6 +58,7 @@
 			</array>
 		</dict>
 	</dict>
+
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
