@@ -1,12 +1,12 @@
 workflows:
   ios-testflight:
-    name: iOS TestFlight (Fixed Signing)
+    name: iOS TestFlight (Auto Signing Fixed)
     max_build_duration: 60
 
     environment:
       flutter: stable
 
-      # ✅ THIS is the important part (automatic App Store signing)
+      # ✅ THIS is the only correct signing mode for you
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.kanishkaa.attendanceapp
@@ -19,16 +19,16 @@ workflows:
       app_store_connect: "Kanishkaa attendance app"
 
     scripts:
-      # 1. Get dependencies
+      # Clean environment (prevents broken signing cache)
+      - name: Clean project
+        script: flutter clean
+
+      # Get dependencies
       - name: Install dependencies
         script: flutter pub get
 
-      # 2. Clean build (prevents old signing cache issues)
-      - name: Clean iOS build
-        script: flutter clean
-
-      # 3. Build IPA (NO export plist, NO manual signing)
-      - name: Build IPA for TestFlight
+      # Build IPA for App Store / TestFlight (NO plist, NO manual signing)
+      - name: Build IPA
         script: flutter build ipa --release
 
     artifacts:
@@ -38,8 +38,6 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        beta_groups:
-          - Testers
 
       email:
         recipients:
