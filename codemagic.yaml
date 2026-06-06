@@ -1,9 +1,10 @@
 workflows:
-  ios-method-2:
-    name: iOS signing method-2 workflow
+  ios-testflight:
+    name: iOS TestFlight Workflow
     max_build_duration: 60
 
     environment:
+      flutter: stable
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.kanishkaa.attendanceapp
@@ -16,11 +17,13 @@ workflows:
       app_store_connect: "Kanishkaa attendance app"
 
     scripts:
-      - flutter packages pub get
+      # Install dependencies
+      - name: Install Flutter dependencies
+        script: flutter packages pub get
 
+      # Build IPA
       - name: Build IPA
-        script: |
-          flutter build ipa
+        script: flutter build ipa --export-options-plist=/tmp/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
