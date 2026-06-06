@@ -1,44 +1,34 @@
 workflows:
-  ios-testflight:
-    name: iOS TestFlight (Auto Signing Fixed)
+  ios-method-2:
+    name: iOS signing method-2 workflow
     max_build_duration: 60
-
     environment:
-      flutter: stable
-
-      # ✅ THIS is the only correct signing mode for you
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.kanishkaa.attendanceapp
-
+        provisioning_profiles:
+          - Kanishkaa Mobile Distribution
+        certificates:
+          - Kanishkaa Attendance Distribution
       vars:
         APP_STORE_APPLE_ID: 6776598247
         BUNDLE_ID: com.kanishkaa.attendanceapp
 
+
     integrations:
-      app_store_connect: "Kanishkaa attendance app"
+      app_store_connect: 'Kanishkaa attendance app'
 
     scripts:
-      # Clean environment (prevents broken signing cache)
-      - name: Clean project
-        script: flutter clean
-
-      # Get dependencies
-      - name: Install dependencies
-        script: flutter pub get
-
-      # Build IPA for App Store / TestFlight (NO plist, NO manual signing)
-      - name: Build IPA
-        script: flutter build ipa --release
-
+      - script: xcode-project use-profiles
+      - script: flutter packages pub get
+      - name: Flutter build ipa and automatic versioning
+        script: |
+          flutter build ipa --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
-
+    
     publishing:
       app_store_connect:
-        auth: integration
+        auth: integration  # 💡 Tells Codemagic to look at the 'integrations' block above
         submit_to_testflight: true
-
       email:
         recipients:
           - appletabperumal@icloud.com
