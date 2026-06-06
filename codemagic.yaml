@@ -17,13 +17,10 @@ workflows:
       app_store_connect: "Kanishkaa attendance app"
 
     scripts:
-      # Install dependencies
-      - name: Install Flutter dependencies
-        script: flutter packages pub get
+      - flutter pub get
 
-      # Build IPA
       - name: Build IPA
-        script: flutter build ipa --export-options-plist=/tmp/export_options.plist
+        script: flutter build ipa
 
     artifacts:
       - build/ios/ipa/*.ipa
