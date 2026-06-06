@@ -9,8 +9,9 @@ workflows:
     triggering:
       events:
         - push
-      watched_branches:
-        - main
+        - pull_request
+      branch_patterns:
+        - pattern: main
     scripts:
       - name: Fetch Flutter Dependencies
         script: |
