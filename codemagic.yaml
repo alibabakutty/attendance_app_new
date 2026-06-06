@@ -11,18 +11,27 @@ workflows:
       vars:
         APP_STORE_APPLE_ID: 6777390758
         BUNDLE_ID: com.kanishkaa.attendanceapp2026
-        # Automatically generate unique build number based on timestamp
-        PROJECT_BUILD_NUMBER: $(( $(date +%s) / 10 ))
 
     integrations:
       app_store_connect: 'Codemagic2'
 
     scripts:
+      # Step 1: Use the correct provisioning profiles
       - script: xcode-project use-profiles
 
+      # Step 2: Get Flutter dependencies
       - script: flutter packages pub get
 
-      - name: Flutter build ipa with automatic build number
+      # Step 3: Generate unique build number for this run
+      - name: Generate unique build number
+        script: |
+          # Generate build number from timestamp
+          export PROJECT_BUILD_NUMBER=$(date +%s | cut -c1-10)
+          echo "PROJECT_BUILD_NUMBER=$PROJECT_BUILD_NUMBER" >> $CM_ENV
+          echo "Generated build number: $PROJECT_BUILD_NUMBER"
+
+      # Step 4: Build the IPA using the unique build number
+      - name: Flutter build ipa with auto build number
         script: |
           echo "Using build number: $PROJECT_BUILD_NUMBER"
           flutter build ipa --release \
@@ -33,9 +42,12 @@ workflows:
       - build/ios/ipa/*.ipa
 
     publishing:
+      # Publish IPA to App Store Connect / TestFlight
       app_store_connect:
-        auth: integration   # Uses the 'Codemagic2' integration
+        auth: integration
         submit_to_testflight: true
+
+      # Send build email notification
       email:
         recipients:
           - appletabperumal@icloud.com
